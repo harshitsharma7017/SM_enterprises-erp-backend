@@ -6,6 +6,8 @@ import { config } from './config/env.js';
 import { errorHandler } from './middleware/error-handler.js';
 import healthRoutes from './routes/health.routes.js';
 
+import authRoutes from './routes/auth.routes.js';
+
 const app = express();
 
 app.use(helmet());
@@ -15,6 +17,7 @@ app.use(morgan('dev'));
 
 // Routes
 app.use('/api', healthRoutes);
+app.use('/api/auth', authRoutes);
 
 // Centralized error handling
 app.use(errorHandler);
