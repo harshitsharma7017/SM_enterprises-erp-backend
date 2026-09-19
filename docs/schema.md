@@ -22,12 +22,12 @@
 | Column | Type |
 |---|---|
 | `id` | `id` |
-| `agent_type` | `index` |
+| `agent_type` | `enum` |
 | `name` | `string` |
 | `display_code` | `string` |
 | `calculation_basis_id` | `foreignId` |
 | `commission_rate` | `decimal` |
-| `status` | `index` |
+| `status` | `enum` |
 | `remarks` | `text` |
 | `created_by` | `foreignId` |
 | `updated_by` | `foreignId` |
@@ -58,7 +58,7 @@
 | Column | Type |
 |---|---|
 | `id` | `id` |
-| `buyer_id` | `index` |
+| `buyer_id` | `foreignId` |
 | `name` | `string` |
 | `designation_id` | `foreignId` |
 | `mobile` | `string` |
@@ -78,7 +78,7 @@
 |---|---|
 | `id` | `id` |
 | `display_code` | `string` |
-| `company_name` | `index` |
+| `company_name` | `string` |
 | `name_on_export_invoice` | `string` |
 | `contact_person` | `string` |
 | `email` | `string` |
@@ -100,7 +100,7 @@
 | `bank_name` | `string` |
 | `account_number` | `string` |
 | `swift_code` | `string` |
-| `status` | `index` |
+| `status` | `enum` |
 | `remarks` | `text` |
 | `created_by` | `foreignId` |
 | `updated_by` | `foreignId` |
@@ -139,7 +139,7 @@
 | `name` | `string` |
 | `description` | `text` |
 | `po_format_id` | `foreignId` |
-| `status` | `index` |
+| `status` | `enum` |
 | `remarks` | `text` |
 | `created_by` | `foreignId` |
 | `updated_by` | `foreignId` |
@@ -386,7 +386,7 @@
 |---|---|
 | `id` | `id` |
 | `doc_num` | `string` |
-| `financial_year` | `index` |
+| `financial_year` | `string` |
 | `order_confirmation_id` | `foreignId` |
 | `buyer_id` | `foreignId` |
 | `currency_id` | `foreignId` |
@@ -395,7 +395,7 @@
 | `port_of_discharge_id` | `foreignId` |
 | `shipment_method_id` | `foreignId` |
 | `shipment_date` | `date` |
-| `status` | `index` |
+| `status` | `enum` |
 | `remarks` | `text` |
 | `created_by` | `foreignId` |
 | `updated_by` | `foreignId` |
@@ -419,7 +419,7 @@
 |---|---|
 | `id` | `id` |
 | `name` | `string` |
-| `status` | `index` |
+| `status` | `enum` |
 | `remarks` | `text` |
 | `created_by` | `foreignId` |
 | `updated_by` | `foreignId` |
@@ -452,7 +452,7 @@
 |---|---|
 | `id` | `id` |
 | `inquiry_no` | `string` |
-| `financial_year` | `index` |
+| `financial_year` | `string` |
 | `inquiry_date` | `date` |
 | `buyer_ref` | `string` |
 | `source` | `string` |
@@ -468,7 +468,7 @@
 | `delivery_details` | `text` |
 | `packing_details` | `text` |
 | `remarks` | `text` |
-| `status` | `index` |
+| `status` | `enum` |
 | `converted_at` | `timestamp` |
 | `created_by` | `foreignId` |
 | `updated_by` | `foreignId` |
@@ -530,7 +530,7 @@
 | `price` | `decimal` |
 | `qty` | `unsignedInteger` |
 | `amount` | `decimal` |
-| `status` | `index` |
+| `status` | `enum` |
 | `remarks` | `text` |
 
 ## Table: `inquiry_sources`
@@ -547,14 +547,14 @@
 |---|---|
 | `id` | `id` |
 | `inward_no` | `string` |
-| `financial_year` | `index` |
-| `inward_date` | `index` |
+| `financial_year` | `string` |
+| `inward_date` | `date` |
 | `purchase_order_id` | `foreignId` |
 | `supplier_id` | `foreignId` |
 | `challan_no` | `string` |
 | `challan_date` | `date` |
 | `remarks` | `text` |
-| `status` | `index` |
+| `status` | `enum` |
 | `qc_inspected_at` | `timestamp` |
 | `qc_inspected_by` | `foreignId` |
 | `created_by` | `foreignId` |
@@ -675,7 +675,7 @@
 |---|---|
 | `id` | `id` |
 | `oc_num` | `string` |
-| `financial_year` | `index` |
+| `financial_year` | `string` |
 | `mode` | `enum` |
 | `oc_date` | `date` |
 | `buyer_ref` | `string` |
@@ -696,7 +696,7 @@
 | `delivery_details` | `text` |
 | `packing_details` | `text` |
 | `remarks` | `text` |
-| `status` | `index` |
+| `status` | `enum` |
 | `created_by` | `foreignId` |
 | `updated_by` | `foreignId` |
 | `created_at` | `timestamp` |
@@ -846,7 +846,7 @@
 |---|---|
 | `id` | `id` |
 | `po_num` | `string` |
-| `financial_year` | `index` |
+| `financial_year` | `string` |
 | `order_confirmation_id` | `foreignId` |
 | `supplier_id` | `foreignId` |
 | `po_date` | `date` |
@@ -854,7 +854,7 @@
 | `delivery_details` | `text` |
 | `packing_details` | `text` |
 | `remarks` | `text` |
-| `status` | `index` |
+| `status` | `enum` |
 | `created_by` | `foreignId` |
 | `updated_by` | `foreignId` |
 | `created_at` | `timestamp` |
@@ -942,7 +942,7 @@
 | `id` | `id` |
 | `display_code` | `string` |
 | `party_type` | `enum` |
-| `company_name` | `index` |
+| `company_name` | `string` |
 | `name_on_bill` | `string` |
 | `supplier_type_id` | `foreignId` |
 | `gst_number` | `string` |

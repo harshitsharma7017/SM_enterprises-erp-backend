@@ -1,0 +1,82 @@
+# Database Implementation Scope
+
+## A. Required ERP Application Tables
+- `price_bands`
+- `gst_rates`
+- `calculation_bases`
+- `document_formats`
+- `number_series`
+- `categories`
+- `products`
+- `product_incentives`
+- `agents`
+- `agent_category`
+- `countries`
+- `currencies`
+- `ports`
+- `incoterms`
+- `payment_terms`
+- `shipment_methods`
+- `buyers`
+- `buyer_category`
+- `buyer_carton_markings`
+- `states`
+- `cities`
+- `supplier_types`
+- `designations`
+- `suppliers`
+- `supplier_category`
+- `supplier_contacts`
+- `agent_commissions`
+- `category_format`
+- `document_format_units`
+- `document_format_columns`
+- `document_format_images`
+- `markups`
+- `fob_values`
+- `inquiries`
+- `inquiry_items`
+- `inquiry_item_colours`
+- `inquiry_item_sizes`
+- `inquiry_follow_ups`
+- `order_confirmations`
+- `order_confirmation_items`
+- `order_confirmation_item_colours`
+- `order_confirmation_item_sizes`
+- `purchase_orders`
+- `purchase_order_items`
+- `purchase_order_item_colours`
+- `purchase_order_item_sizes`
+- `purchase_order_timeline_entries`
+- `inward_entries`
+- `inward_entry_items`
+- `buyer_contacts`
+- `supplier_product`
+- `default_markups`
+- `inquiry_sources`
+- `product_bom_items`
+- `inquiry_item_bom_lines`
+- `supplier_buyer`
+- `document_checklist_types`
+- `export_documents`
+- `export_document_items`
+- `export_document_item_colours`
+- `export_document_item_sizes`
+- `export_document_checklists`
+- `containers`
+- `container_export_document`
+- `company_profile`
+- `export_document_cartons`
+- `export_document_carton_lines`
+
+## B. Required Authentication Tables
+- `users` (Required for JWT and audit trailing)
+- `password_reset_tokens` (Optional, included for completeness if password reset is added later)
+
+## C. Laravel-only Infrastructure Tables (Skipped)
+- `sessions`
+- `cache`
+- `cache_locks`
+- `jobs`
+- `job_batches`
+- `failed_jobs`
