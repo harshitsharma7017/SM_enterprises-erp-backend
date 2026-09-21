@@ -21,6 +21,8 @@ import jobberRoutes from './modules/jobber/jobber.routes.js';
 import agentRoutes from './modules/agent/agent.routes.js';
 import fobValueRoutes from './modules/fob-value/fob-value.routes.js';
 import inquiryRoutes from './modules/inquiry/inquiry.routes.js';
+import orderConfirmationRoutes from './modules/order-confirmation/order-confirmation.routes.js';
+import purchaseOrderRoutes from './modules/purchase-order/purchase-order.routes.js';
 
 const app = express();
 
@@ -44,6 +46,8 @@ app.use('/api/masters/jobbers', jobberRoutes);
 app.use('/api/masters/agents', agentRoutes);
 app.use('/api/masters/fob-values', fobValueRoutes);
 app.use('/api/inquiries', inquiryRoutes);
+app.use('/api/sales/order-confirmations', orderConfirmationRoutes);
+app.use('/api/procurement/purchase-orders', purchaseOrderRoutes);
 
 
 // Centralized error handling

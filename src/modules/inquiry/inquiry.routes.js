@@ -1,6 +1,7 @@
 import express from 'express';
 import { inquiryController } from './inquiry.controller.js';
 import { inquiryValidator } from './inquiry.validator.js';
+import { orderConfirmationController } from '../order-confirmation/order-confirmation.controller.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac.middleware.js';
 
@@ -59,5 +60,12 @@ router.put(
 
 // DELETE /api/inquiries/:id
 router.delete('/:id', requirePermission('inquiry.delete'), inquiryController.destroy);
+
+// POST /api/inquiries/:id/convert-to-oc
+router.post(
+  '/:id/convert-to-oc',
+  requirePermission('order-confirmation.create'),
+  orderConfirmationController.convertFromInquiry
+);
 
 export default router;
