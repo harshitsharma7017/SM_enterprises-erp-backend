@@ -26,6 +26,14 @@ import purchaseOrderRoutes from './modules/purchase-order/purchase-order.routes.
 import inwardEntryRoutes from './modules/inward-entry/inward-entry.routes.js';
 import exportDocumentRoutes from './modules/export-document/export-document.routes.js';
 
+// Phase 21 & 22 Imports
+import packingRoutes from './modules/packing/packing.routes.js';
+import financeRoutes from './modules/finance/finance.routes.js';
+import reportRoutes from './modules/report/report.routes.js';
+import companyProfileRoutes from './modules/company-profile/company-profile.routes.js';
+import userRoutes from './modules/user-management/user.routes.js';
+import roleRoutes from './modules/user-management/role.routes.js';
+
 const app = express();
 
 app.use(helmet());
@@ -53,6 +61,13 @@ app.use('/api/procurement/purchase-orders', purchaseOrderRoutes);
 app.use('/api/procurement/inward-entries', inwardEntryRoutes);
 app.use('/api/export/documents', exportDocumentRoutes);
 
+// Phase 21 & 22 Routes
+app.use('/api/export/packing', packingRoutes);
+app.use('/api/finance', financeRoutes);
+app.use('/api/reports', reportRoutes);
+app.use('/api/user-management/company-profile', companyProfileRoutes);
+app.use('/api/user-management/users', userRoutes);
+app.use('/api/user-management', roleRoutes);
 
 // Centralized error handling
 app.use(errorHandler);

@@ -75,13 +75,13 @@ router.delete(
 // PDF generation routes
 router.get('/:document/delivery-challan', requirePermission('export-document.generate'), exportDocumentController.deliveryChallanPdf);
 router.get('/:document/e-invoice', requirePermission('export-document.generate'), exportDocumentController.eInvoicePdf);
-router.get('/:document/packing-list/:variant?', requirePermission('export-document.generate'), exportDocumentController.packingListPdf);
+router.get('/:document/packing-list/:variant', requirePermission('export-document.generate'), exportDocumentController.packingListPdf);
 router.get('/:document/bill-of-lading-draft', requirePermission('export-document.generate'), exportDocumentController.billOfLadingDraftPdf);
-router.get('/:document/export-invoice/:variant?', requirePermission('export-document.generate'), exportDocumentController.exportInvoicePdf);
-router.get('/:document/item-summary/:variant?', requirePermission('export-document.generate'), exportDocumentController.itemSummaryPdf);
-router.get('/:document/purchase-bills/:variant?', requirePermission('export-document.generate'), exportDocumentController.purchaseBillsPdf);
-router.get('/:document/vgm/:variant?', requirePermission('export-document.generate'), exportDocumentController.vgmPdf);
-router.get('/:document/bank-docs/:variant?', requirePermission('export-document.generate'), exportDocumentController.bankDocsPdf);
-router.get('/:document/buyer-docs/:variant?', requirePermission('export-document.generate'), exportDocumentController.buyerDocsPdf);
+router.get('/:document/export-invoice/:variant', requirePermission('export-document.generate'), exportDocumentController.exportInvoicePdf);
+router.get('/:document/item-summary/:variant', requirePermission('export-document.generate'), exportDocumentController.itemSummaryPdf);
+router.get('/:document/purchase-bills/:variant', requirePermission('export-document.generate'), exportDocumentController.purchaseBillsPdf);
+router.get('/:document/vgm/:variant', requirePermission('export-document.generate'), exportDocumentController.vgmPdf);
+router.get('/:document/bank-docs/:variant', requirePermission('export-document.generate'), exportDocumentController.bankDocsPdf);
+router.get('/:document/buyer-docs/:variant', requirePermission('export-document.generate'), exportDocumentController.buyerDocsPdf);
 
 export default router;

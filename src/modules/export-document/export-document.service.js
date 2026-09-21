@@ -83,7 +83,7 @@ export const exportDocumentService = {
         const item = oc.items[i];
         const [itemResult] = await connection.query(`
           INSERT INTO export_document_items (
-            export_document_id, order_confirmation_item_id, sort_order, design_no, description, 
+            export_document_id, order_confirmation_item_id, sort_order, design_no, description,
             product_id, unit, price, qty, amount, remarks, custom_values
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `, [
@@ -100,7 +100,7 @@ export const exportDocumentService = {
           item.remarks || null,
           item.custom_values ? JSON.stringify(item.custom_values) : null
         ]);
-        
+
         const exportItemId = itemResult.insertId;
 
         if (item.colours && Array.isArray(item.colours)) {
@@ -110,7 +110,7 @@ export const exportDocumentService = {
               INSERT INTO export_document_item_colours (export_document_item_id, colour, sort_order)
               VALUES (?, ?, ?)
             `, [exportItemId, colour.colour, j]);
-            
+
             const exportColourId = colourResult.insertId;
 
             if (colour.sizes && Array.isArray(colour.sizes)) {
@@ -153,15 +153,26 @@ export const exportDocumentService = {
 
       const existing = await exportDocumentRepository.findById(id);
       if (!existing) throw new Error('Export Document not found');
-      
+
       if (existing.status === 'closed') {
         throw new Error('Cannot update a closed Export Document.');
       }
 
       await connection.query(`
         UPDATE export_documents SET
-          buyer_id = ?, currency_id = ?, incoterm_id = ?, port_of_loading_id = ?, 
-          port_of_discharge_id = ?, shipment_method_id = ?, shipment_date = ?, 
+          buyer_id = ?, currency_id = ?, incoterm_id = ?, port_of_loading_id = ?,
+          port_of_discharge_id = ?, shipment_method_id = ?, shipment_date = ?,
+          invoice_no = ?, invoice_date = ?, exporter_ref = ?, buyer_ref_no = ?,
+          buyer_ref_date = ?, other_reference = ?, consignee_name = ?, consignee_address = ?,
+          pre_carriage_by = ?, place_of_receipt = ?, vessel_flight_no = ?, country_of_origin = ?,
+          forwarder_name = ?, forwarder_address = ?, vehicle_no = ?, driver_cell = ?,
+          final_destination = ?, marks_and_numbers = ?, total_cartons = ?, package_kind = ?,
+          freight_amount = ?, insurance_amount = ?, gross_weight = ?, net_weight = ?,
+          carton_dimensions = ?, booking_no = ?, bl_no = ?, voyage_no = ?,
+          transshipment_port = ?, notify_party_name = ?, notify_party_address = ?, goods_description = ?,
+          total_measurement = ?, ex_rate = ?, freight_terms = ?, freight_prepaid_at = ?,
+          freight_payable_at = ?, total_prepaid_in = ?, no_of_original_bls = ?, bl_place_of_issue = ?,
+          bl_date_of_issue = ?,
           status = ?, remarks = ?, updated_by = ?, updated_at = NOW()
         WHERE id = ?
       `, [
@@ -172,6 +183,47 @@ export const exportDocumentService = {
         data.port_of_discharge_id || null,
         data.shipment_method_id || null,
         data.shipment_date || null,
+        data.invoice_no || null,
+        data.invoice_date || null,
+        data.exporter_ref || null,
+        data.buyer_ref_no || null,
+        data.buyer_ref_date || null,
+        data.other_reference || null,
+        data.consignee_name || null,
+        data.consignee_address || null,
+        data.pre_carriage_by || null,
+        data.place_of_receipt || null,
+        data.vessel_flight_no || null,
+        data.country_of_origin || null,
+        data.forwarder_name || null,
+        data.forwarder_address || null,
+        data.vehicle_no || null,
+        data.driver_cell || null,
+        data.final_destination || null,
+        data.marks_and_numbers || null,
+        data.total_cartons || null,
+        data.package_kind || null,
+        data.freight_amount || null,
+        data.insurance_amount || null,
+        data.gross_weight || null,
+        data.net_weight || null,
+        data.carton_dimensions || null,
+        data.booking_no || null,
+        data.bl_no || null,
+        data.voyage_no || null,
+        data.transshipment_port || null,
+        data.notify_party_name || null,
+        data.notify_party_address || null,
+        data.goods_description || null,
+        data.total_measurement || null,
+        data.ex_rate || null,
+        data.freight_terms || null,
+        data.freight_prepaid_at || null,
+        data.freight_payable_at || null,
+        data.total_prepaid_in || null,
+        data.no_of_original_bls || null,
+        data.bl_place_of_issue || null,
+        data.bl_date_of_issue || null,
         data.status || existing.status,
         data.remarks || null,
         userId,
@@ -180,6 +232,10 @@ export const exportDocumentService = {
 
       if (data.items) {
         await exportDocumentRepository.syncItems(connection, id, data.items);
+      }
+
+      if (data.cartons) {
+        await exportDocumentRepository.syncCartons(connection, id, data.cartons);
       }
 
       await connection.commit();
