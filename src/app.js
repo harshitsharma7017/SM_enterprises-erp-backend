@@ -20,6 +20,7 @@ import supplierRoutes from './modules/supplier/supplier.routes.js';
 import jobberRoutes from './modules/jobber/jobber.routes.js';
 import agentRoutes from './modules/agent/agent.routes.js';
 import fobValueRoutes from './modules/fob-value/fob-value.routes.js';
+import inquiryRoutes from './modules/inquiry/inquiry.routes.js';
 
 const app = express();
 
@@ -42,6 +43,7 @@ app.use('/api/masters/suppliers', supplierRoutes);
 app.use('/api/masters/jobbers', jobberRoutes);
 app.use('/api/masters/agents', agentRoutes);
 app.use('/api/masters/fob-values', fobValueRoutes);
+app.use('/api/inquiries', inquiryRoutes);
 
 
 // Centralized error handling
