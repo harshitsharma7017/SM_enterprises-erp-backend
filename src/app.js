@@ -15,6 +15,7 @@ import authRoutes from './routes/auth.routes.js';
 import categoryRoutes from './modules/category/category.routes.js';
 import orderFormatRoutes from './modules/order-format/order-format.routes.js';
 import productRoutes from './modules/product/product.routes.js';
+import buyerRoutes from './modules/buyer/buyer.routes.js';
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/masters/categories', categoryRoutes);
 app.use('/api/masters/formats', orderFormatRoutes);
 app.use('/api/masters/products', productRoutes);
+app.use('/api/masters/buyers', buyerRoutes);
 
 
 // Centralized error handling
