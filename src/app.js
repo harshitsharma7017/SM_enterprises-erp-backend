@@ -16,6 +16,8 @@ import categoryRoutes from './modules/category/category.routes.js';
 import orderFormatRoutes from './modules/order-format/order-format.routes.js';
 import productRoutes from './modules/product/product.routes.js';
 import buyerRoutes from './modules/buyer/buyer.routes.js';
+import supplierRoutes from './modules/supplier/supplier.routes.js';
+import jobberRoutes from './modules/jobber/jobber.routes.js';
 
 const app = express();
 
@@ -34,6 +36,8 @@ app.use('/api/masters/categories', categoryRoutes);
 app.use('/api/masters/formats', orderFormatRoutes);
 app.use('/api/masters/products', productRoutes);
 app.use('/api/masters/buyers', buyerRoutes);
+app.use('/api/masters/suppliers', supplierRoutes);
+app.use('/api/masters/jobbers', jobberRoutes);
 
 
 // Centralized error handling
