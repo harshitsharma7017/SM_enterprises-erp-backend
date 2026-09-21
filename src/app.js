@@ -18,6 +18,8 @@ import productRoutes from './modules/product/product.routes.js';
 import buyerRoutes from './modules/buyer/buyer.routes.js';
 import supplierRoutes from './modules/supplier/supplier.routes.js';
 import jobberRoutes from './modules/jobber/jobber.routes.js';
+import agentRoutes from './modules/agent/agent.routes.js';
+import fobValueRoutes from './modules/fob-value/fob-value.routes.js';
 
 const app = express();
 
@@ -38,6 +40,8 @@ app.use('/api/masters/products', productRoutes);
 app.use('/api/masters/buyers', buyerRoutes);
 app.use('/api/masters/suppliers', supplierRoutes);
 app.use('/api/masters/jobbers', jobberRoutes);
+app.use('/api/masters/agents', agentRoutes);
+app.use('/api/masters/fob-values', fobValueRoutes);
 
 
 // Centralized error handling
