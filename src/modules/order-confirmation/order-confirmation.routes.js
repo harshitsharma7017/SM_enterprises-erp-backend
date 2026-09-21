@@ -1,6 +1,7 @@
 import express from 'express';
 import { orderConfirmationController } from './order-confirmation.controller.js';
 import { orderConfirmationValidator } from './order-confirmation.validator.js';
+import { exportDocumentController } from '../export-document/export-document.controller.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/rbac.middleware.js';
 
@@ -45,6 +46,13 @@ router.post(
   requirePermission('order-confirmation.approve'), // Using approve as a proxy for 'raise-po' if specific permission doesn't exist. "approve" is typically used for major business logic actions.
   orderConfirmationValidator.validateRaisePo,
   orderConfirmationController.raisePurchaseOrders
+);
+
+// POST /api/sales/order-confirmations/:id/raise-export-document
+router.post(
+  '/:id/raise-export-document',
+  requirePermission('export-document.create'),
+  exportDocumentController.raiseFromOrderConfirmation
 );
 
 export default router;

@@ -23,6 +23,8 @@ import fobValueRoutes from './modules/fob-value/fob-value.routes.js';
 import inquiryRoutes from './modules/inquiry/inquiry.routes.js';
 import orderConfirmationRoutes from './modules/order-confirmation/order-confirmation.routes.js';
 import purchaseOrderRoutes from './modules/purchase-order/purchase-order.routes.js';
+import inwardEntryRoutes from './modules/inward-entry/inward-entry.routes.js';
+import exportDocumentRoutes from './modules/export-document/export-document.routes.js';
 
 const app = express();
 
@@ -48,6 +50,8 @@ app.use('/api/masters/fob-values', fobValueRoutes);
 app.use('/api/inquiries', inquiryRoutes);
 app.use('/api/sales/order-confirmations', orderConfirmationRoutes);
 app.use('/api/procurement/purchase-orders', purchaseOrderRoutes);
+app.use('/api/procurement/inward-entries', inwardEntryRoutes);
+app.use('/api/export/documents', exportDocumentRoutes);
 
 
 // Centralized error handling
