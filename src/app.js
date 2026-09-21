@@ -7,6 +7,7 @@ import { errorHandler } from './middleware/error-handler.js';
 import healthRoutes from './routes/health.routes.js';
 
 import authRoutes from './routes/auth.routes.js';
+import categoryRoutes from './modules/category/category.routes.js';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use(morgan('dev'));
 // Routes
 app.use('/api', healthRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/masters/categories', categoryRoutes);
 
 // Centralized error handling
 app.use(errorHandler);
