@@ -14,5 +14,10 @@ export const config = {
   jwt: {
     secret: process.env.JWT_SECRET || 'fallback_secret_do_not_use_in_prod',
     expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-  }
+  },
+  // Original ERP: config('permissions.super_admin.email') — the one account
+  // UserService/UpdateUserRequest protect from deletion, deactivation and
+  // having its Super Admin role stripped. Not "whoever holds the Super Admin
+  // role" — one specific configured account.
+  superAdminEmail: process.env.SUPER_ADMIN_EMAIL || 'test@test.com'
 };

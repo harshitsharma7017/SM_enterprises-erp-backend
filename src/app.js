@@ -41,8 +41,17 @@ app.use(cors({ origin: config.frontendUrl }));
 app.use(express.json());
 app.use(morgan('dev'));
 
-// Static file serving for uploads (matches Laravel public disk structure)
-app.use('/storage', express.static(path.join(__dirname, '../public/storage')));
+// Static file serving for uploads (matches Laravel public disk structure).
+// helmet()'s default Cross-Origin-Resource-Policy: same-origin blocks the
+// frontend (a different origin/port) from embedding these files directly —
+// e.g. <img src> for the Company Profile logo preview. Files served under
+// /storage are meant to be loaded cross-origin by design, so that one
+// header is relaxed here; the JSON API's helmet() protection elsewhere is
+// untouched.
+app.use('/storage', (req, res, next) => {
+  res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+  next();
+}, express.static(path.join(__dirname, '../public/storage')));
 
 // Routes
 app.use('/api', healthRoutes);

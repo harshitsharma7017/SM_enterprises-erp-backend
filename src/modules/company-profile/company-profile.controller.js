@@ -1,6 +1,15 @@
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { companyProfileRepository } from './company-profile.repository.js';
 import Joi from 'joi';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// 'logo' is never accepted as a body field — it only ever comes from the
+// uploaded file (see update() below), matching the original's
+// `$request->safe()->except('logo')` plus an explicit logo_path assignment.
 const validator = Joi.object({
   company_name: Joi.string().max(255).required(),
   tagline: Joi.string().max(255).allow(null, ''),
@@ -14,8 +23,7 @@ const validator = Joi.object({
   bank_ifsc: Joi.string().max(255).allow(null, ''),
   bank_swift: Joi.string().max(255).allow(null, ''),
   signatory_name: Joi.string().max(255).allow(null, ''),
-  signatory_designation: Joi.string().max(255).allow(null, ''),
-  logo_path: Joi.string().max(255).allow(null, '')
+  signatory_designation: Joi.string().max(255).allow(null, '')
 });
 
 export const companyProfileController = {
@@ -36,6 +44,17 @@ export const companyProfileController = {
           message: 'Validation failed',
           errors: error.details.reduce((acc, curr) => ({ ...acc, [curr.path[0]]: curr.message }), {})
         });
+      }
+
+      // Original ERP: CompanyProfileController::update() — a new logo
+      // replaces and deletes the old file; no file means "leave it alone".
+      if (req.file) {
+        const existing = await companyProfileRepository.get();
+        if (existing?.logo_path) {
+          const oldPath = path.join(__dirname, '../../../public/storage', existing.logo_path);
+          fs.unlink(oldPath, () => {});
+        }
+        value.logo_path = `company-profile/${req.file.filename}`;
       }
 
       await companyProfileRepository.update(value);

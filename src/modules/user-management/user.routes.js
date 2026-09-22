@@ -1,21 +1,20 @@
 import express from 'express';
 import { userController } from './user.controller.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
+import { requirePermission } from '../../middleware/rbac.middleware.js';
 
-// The Laravel application didn't specify explicit permissions for users/roles in the docs, 
-// usually this implies 'user.view' or a generic superadmin check. 
-// We will apply authenticate and a placeholder check if needed, but for now just auth.
-// Wait, original-erp-route-inventory.md didn't show permission name, it was blank!
-// We will just use auth, and in controller we can use rbacRepository.hasSuperAdminRole if needed.
+// Original ERP: UserController::middleware() — user.view (index/show),
+// user.create (create/store), user.edit (edit/update/toggleStatus),
+// user.delete (destroy).
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', userController.index);
-router.post('/', userController.store);
-router.get('/:user', userController.show);
-router.put('/:user', userController.update);
-router.patch('/:user/toggle-status', userController.toggleStatus);
-router.delete('/:user', userController.destroy);
+router.get('/', requirePermission('user.view'), userController.index);
+router.post('/', requirePermission('user.create'), userController.store);
+router.get('/:user', requirePermission('user.view'), userController.show);
+router.put('/:user', requirePermission('user.edit'), userController.update);
+router.patch('/:user/toggle-status', requirePermission('user.edit'), userController.toggleStatus);
+router.delete('/:user', requirePermission('user.delete'), userController.destroy);
 
 export default router;
