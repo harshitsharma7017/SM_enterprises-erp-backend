@@ -98,10 +98,13 @@ export const exportDocumentRepository = {
     entry.items = items;
 
     const [checklists] = await pool.query(`
-      SELECT edc.*, dct.name as checklist_type_name
+      SELECT edc.*, dct.name as checklist_type_name, dct.code as checklist_type_code,
+        dct.category as checklist_type_category, dct.variant_labels as checklist_type_variant_labels,
+        dct.closes_shipment as checklist_type_closes_shipment
       FROM export_document_checklists edc
       LEFT JOIN document_checklist_types dct ON dct.id = edc.document_checklist_type_id
       WHERE edc.export_document_id = ?
+      ORDER BY dct.sort_order ASC
     `, [id]);
 
     entry.checklists = checklists;

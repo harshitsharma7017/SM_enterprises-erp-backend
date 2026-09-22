@@ -19,7 +19,7 @@ export const authService = {
       throw error;
     }
 
-    const isMatch = await bcrypt.compare(password, user.password_hash);
+    const isMatch = await bcrypt.compare(password, user.password);
     
     if (!isMatch) {
       const error = new Error('Invalid email or password');
@@ -48,7 +48,7 @@ export const authService = {
   },
 
   getCurrentUser: async (userId) => {
-    const user = await authRepository.findUserById(userId);
+    const user = await authRepository.findUserWithRolesAndPermissions(userId);
     
     if (!user) {
       const error = new Error('User not found');

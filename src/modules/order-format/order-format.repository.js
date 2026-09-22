@@ -77,7 +77,7 @@ export const orderFormatRepository = {
     );
 
     const [columns] = await pool.query(
-      'SELECT id, `key`, label, is_enabled, is_custom, print_only, sort_order ' +
+      'SELECT id, `key`, label, is_enabled, is_mandatory, is_custom, print_only, sub_columns, sort_order ' +
       'FROM document_format_columns ' +
       'WHERE document_format_id = ? ORDER BY sort_order ASC',
       [id]
@@ -120,11 +120,14 @@ export const orderFormatRepository = {
   create: async (connection, data) => {
     const [result] = await connection.query(
       `INSERT INTO document_formats (
-        name, status, created_at, updated_at
-      ) VALUES (?, ?, NOW(), NOW())`,
+        name, status, allow_multiple_colours, delivery_details, packing_details, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
       [
-        data.name, 
-        data.status
+        data.name,
+        data.status,
+        data.allow_multiple_colours ? 1 : 0,
+        data.delivery_details || null,
+        data.packing_details || null
       ]
     );
     return result.insertId;
@@ -132,12 +135,15 @@ export const orderFormatRepository = {
 
   update: async (connection, id, data) => {
     await connection.query(
-      `UPDATE document_formats SET 
-        name = ?, status = ?, updated_at = NOW()
+      `UPDATE document_formats SET
+        name = ?, status = ?, allow_multiple_colours = ?, delivery_details = ?, packing_details = ?, updated_at = NOW()
       WHERE id = ?`,
       [
         data.name,
         data.status,
+        data.allow_multiple_colours ? 1 : 0,
+        data.delivery_details || null,
+        data.packing_details || null,
         id
       ]
     );
@@ -180,15 +186,17 @@ export const orderFormatRepository = {
   insertColumn: async (connection, documentFormatId, colData) => {
     await connection.query(
       'INSERT INTO document_format_columns (' +
-      '  document_format_id, `key`, label, is_enabled, is_custom, print_only, sort_order' +
-      ') VALUES (?, ?, ?, ?, ?, ?, ?)',
+      '  document_format_id, `key`, label, is_enabled, is_mandatory, is_custom, print_only, sub_columns, sort_order' +
+      ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [
         documentFormatId,
         colData.key,
         colData.label,
         colData.is_enabled ? 1 : 0,
+        colData.is_mandatory ? 1 : 0,
         colData.is_custom ? 1 : 0,
         colData.print_only ? 1 : 0,
+        colData.sub_columns ? JSON.stringify(colData.sub_columns) : null,
         colData.sort_order
       ]
     );

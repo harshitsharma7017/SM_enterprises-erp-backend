@@ -82,12 +82,21 @@ export const exportDocumentController = {
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'No file uploaded' });
       }
-      await exportDocumentService.updateChecklist(req.params.id, req.params.checklist_id, req.file);
+      // Store a relative path servable via the /storage static mount (see
+      // app.js: app.use('/storage', express.static(.../public/storage))),
+      // matching the pattern order-format.service.js already uses for its
+      // own uploads — req.file.path is an absolute filesystem path and was
+      // previously stored as-is, making every checklist file unlinkable.
+      const relativePath = `export-documents/${req.file.filename}`;
+      await exportDocumentService.updateChecklist(req.params.id, req.params.checklist_id, {
+        path: relativePath,
+        originalname: req.file.originalname
+      });
       res.json({
         success: true,
         message: 'Checklist file uploaded successfully',
         data: {
-          file_path: req.file.path,
+          file_path: relativePath,
           original_name: req.file.originalname
         }
       });
