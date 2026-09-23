@@ -90,6 +90,12 @@ export const brandRepository = {
     );
   },
 
+  /** Brand projections (including soft-deleted ones) referencing this brand. */
+  countProjections: async (id) => {
+    const [rows] = await pool.query('SELECT COUNT(*) as cnt FROM brand_projections WHERE brand_id = ?', [id]);
+    return rows[0].cnt;
+  },
+
   softDelete: async (id) => {
     await pool.query('UPDATE brands SET deleted_at = NOW() WHERE id = ? AND deleted_at IS NULL', [id]);
   },

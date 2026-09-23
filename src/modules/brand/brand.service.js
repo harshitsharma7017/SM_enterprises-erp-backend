@@ -25,8 +25,13 @@ export const brandService = {
     if (!existing) throw notFound();
 
     const payload = toPayload(data);
-    // Nothing references brands yet, so ownership may move — but only to an active company.
-    await companyScope.assertChangedOwnerActive(existing.company_id, payload.company_id);
+    if (payload.company_id !== existing.company_id) {
+      // Projections must share their brand's company, so a brand in use cannot move.
+      if (await brandRepository.countProjections(id) > 0) {
+        throw companyScope.error('This brand is used by brand projections, so its company cannot be changed.');
+      }
+      await companyScope.assertActiveCompany(payload.company_id);
+    }
 
     await brandRepository.update(id, { ...payload, updated_by: userId });
     return brandRepository.findById(id);
@@ -42,6 +47,11 @@ export const brandService = {
   delete: async (id) => {
     const existing = await brandRepository.findById(id);
     if (!existing) throw notFound();
+
+    const projectionCount = await brandRepository.countProjections(id);
+    if (projectionCount > 0) {
+      throw { status: 400, message: `This brand is used by ${projectionCount} brand projection(s). Deactivate it instead.` };
+    }
     await brandRepository.softDelete(id);
   },
 };

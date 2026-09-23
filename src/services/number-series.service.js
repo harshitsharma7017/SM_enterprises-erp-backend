@@ -2,7 +2,33 @@
  * Hands out the next display code for a module — CAT001, CAT002, etc.
  * Replicates the original Laravel NumberSeriesService logic.
  */
+/** Indian financial year (Apr–Mar) label for a date, e.g. "2026-27". */
+export const financialYearFor = (date = new Date()) => {
+  const month = date.getMonth() + 1;
+  const year = date.getFullYear();
+  const startYear = month >= 4 ? year : year - 1;
+  return `${startYear}-${String(startYear + 1).slice(-2)}`;
+};
+
 export const numberSeriesService = {
+  /**
+   * Creates the module's series for a financial year on first use — the same
+   * lazy pattern the inquiry/PO/inward modules use inline.
+   */
+  ensure: async (connection, module, prefix, financialYear) => {
+    const [existing] = await connection.query(
+      'SELECT id FROM number_series WHERE module = ? AND financial_year = ?',
+      [module, financialYear]
+    );
+    if (existing.length === 0) {
+      await connection.query(
+        `INSERT INTO number_series (module, prefix, financial_year, current_number, padding, reset_yearly, created_at, updated_at)
+         VALUES (?, ?, ?, 0, 3, 1, NOW(), NOW())`,
+        [module, prefix, financialYear]
+      );
+    }
+  },
+
   /**
    * Reserve and return the next code for a module.
    * 
