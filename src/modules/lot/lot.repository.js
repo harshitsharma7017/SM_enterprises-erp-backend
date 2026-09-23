@@ -17,6 +17,7 @@ const SELECT = `
          COALESCE(rt.returned_quantity, 0) AS returned_quantity,
          COALESCE(st.stock_quantity, 0) AS stock_quantity,
          COALESCE(st.stock_received_quantity, 0) AS stock_received_quantity,
+         COALESCE(st.stock_issued_quantity, 0) AS stock_issued_quantity,
          CASE WHEN COALESCE(qt.inspected_quantity, 0) = 0 THEN 'not_inspected'
               WHEN qt.inspected_quantity < l.quantity THEN 'partially_inspected'
               ELSE 'inspected' END AS qc_state
@@ -104,6 +105,16 @@ export const lotRepository = {
       FROM quality_inspections qi WHERE qi.lot_id = ? ORDER BY qi.id
     `, [id]);
     lot.inspections = inspections;
+    const [issues] = await pool.query(`
+      SELECT mii.id AS material_issue_item_id, mi.id AS material_issue_id, mi.issue_no, mi.issue_date, mi.status,
+             mi.job_reference, mii.quantity, pr.id AS processing_record_id, pr.processing_no, pr.status AS processing_status
+      FROM material_issue_items mii
+      JOIN material_issues mi ON mi.id = mii.material_issue_id
+      LEFT JOIN processing_records pr ON pr.material_issue_id = mi.id
+      WHERE mii.lot_id = ? AND mi.status <> 'cancelled'
+      ORDER BY mi.id
+    `, [id]);
+    lot.material_issues = issues;
     return lot;
   },
 };

@@ -36,6 +36,7 @@ import qualityControlRoutes from './modules/quality-control/quality-control.rout
 import supplierReturnRoutes from './modules/supplier-return/supplier-return.routes.js';
 import debitNoteRoutes from './modules/debit-note/debit-note.routes.js';
 import inventoryRoutes from './modules/inventory/inventory.routes.js';
+import productionRoutes from './modules/production/production.routes.js';
 import exportDocumentRoutes from './modules/export-document/export-document.routes.js';
 
 // Phase 21 & 22 Imports
@@ -92,6 +93,7 @@ app.use('/api/procurement/lots', lotRoutes);
 app.use('/api/procurement/supplier-returns', supplierReturnRoutes);
 app.use('/api/quality-control', qualityControlRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/production', productionRoutes);
 app.use('/api/export/documents', exportDocumentRoutes);
 
 // Phase 21 & 22 Routes

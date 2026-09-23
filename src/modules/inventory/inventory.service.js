@@ -34,7 +34,7 @@ const text = (v) => (blank(v) ? null : String(v).trim());
 const sameId = (a, b) => (a === null || a === undefined ? null : Number(a)) === (b === null || b === undefined ? null : Number(b));
 
 /** The lot must be a received lot of a posted GRN whose product belongs to the lot's company. */
-const checkLot = (lot) => {
+export const checkLot = (lot) => {
   if (!lot) throw rejected('Lot not found.');
   if (lot.status !== 'received') throw rejected(`Lot ${lot.lot_no} is ${lot.status}.`);
   if (lot.entry_type !== 'grn' || lot.grn_deleted_at || lot.receipt_status !== 'posted') {
@@ -56,7 +56,7 @@ const checkLocation = async (executor, locationId, lot, { mustBeActive = true } 
   return location;
 };
 
-const nextMovementNo = async (connection, movementDate) => {
+export const nextMovementNo = async (connection, movementDate) => {
   const financialYear = financialYearFor(dateFor(movementDate));
   await numberSeriesService.ensure(connection, STOCK_SERIES.module, STOCK_SERIES.prefix, financialYear);
   return { financialYear, movementNo: await numberSeriesService.next(connection, STOCK_SERIES.module, financialYear) };
@@ -168,8 +168,9 @@ export const inventoryService = {
   /**
    * Restricted correction of an EXISTING lot balance at a location (reason
    * required). OUT may not take the balance below zero; IN may only restore
-   * stock previously taken out — a lot's stock never exceeds the QC-accepted
-   * quantity posted for it. This is not an opening-balance mechanism.
+   * stock earlier adjustments took out (never material issued to production)
+   * — a lot's stock never exceeds the QC-accepted quantity posted for it.
+   * This is not an opening-balance mechanism.
    */
   adjust: async (data, userId) => inTransaction(async (connection) => {
     const lot = await inventoryRepository.lockLot(connection, data.lot_id);
@@ -194,6 +195,10 @@ export const inventoryService = {
     if (data.direction === 'in' && quantity.toMicro(totals.stock_quantity) + quantity.toMicro(value) > quantity.toMicro(totals.received_quantity)) {
       const room = quantity.fromMicro(Math.max(quantity.toMicro(totals.received_quantity) - quantity.toMicro(totals.stock_quantity), 0));
       throw rejected(`Adding ${value} exceeds the QC-accepted quantity of lot ${lot.lot_no}; at most ${room}${unit} can be restored.`);
+    }
+    // Only what adjustments removed can be restored — never issued material.
+    if (data.direction === 'in' && quantity.toMicro(value) > quantity.toMicro(totals.adjusted_out_quantity)) {
+      throw rejected(`Adding ${value} exceeds the ${quantity.fromMicro(Math.max(quantity.toMicro(totals.adjusted_out_quantity), 0))}${unit} of lot ${lot.lot_no} removed by earlier adjustments.`);
     }
 
     const { financialYear, movementNo } = await nextMovementNo(connection, data.movement_date);

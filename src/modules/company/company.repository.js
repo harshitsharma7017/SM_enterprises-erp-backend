@@ -15,6 +15,8 @@ const OWNED_TABLES = [
   { table: 'debit_notes', label: 'debit note' },
   { table: 'stock_locations', label: 'stock location' },
   { table: 'stock_movements', label: 'stock movement' },
+  { table: 'material_issues', label: 'material issue' },
+  { table: 'processing_records', label: 'processing record' },
   { table: 'export_documents', label: 'export document' },
 ];
 

@@ -24,8 +24,8 @@ router.get('/ledger', requirePermission('stock.ledger'), inventoryController.led
 router.get('/ledger/:id', requirePermission('stock.ledger'), inventoryController.movement);
 
 // ---------------- Locations ----------------
-// Listing is also needed to pick a location when posting/adjusting or filtering stock.
-router.get('/locations', requireAnyPermission(['stock-location.view', 'stock.view', 'stock.post', 'stock.adjust']), inventoryController.locations);
+// Listing is also needed to pick a location when posting/adjusting or filtering stock / production lists.
+router.get('/locations', requireAnyPermission(['stock-location.view', 'stock.view', 'stock.post', 'stock.adjust', 'material-issue.view', 'processing.view']), inventoryController.locations);
 router.get('/locations/:id', requirePermission('stock-location.view'), inventoryController.location);
 router.post('/locations', requirePermission('stock-location.create'), validate(inventoryValidator.locationCreate), inventoryController.createLocation);
 router.put('/locations/:id', requirePermission('stock-location.edit'), validate(inventoryValidator.locationUpdate), inventoryController.updateLocation);
