@@ -8,6 +8,7 @@ export const productController = {
         status: req.query.status,
         category_id: req.query.category_id,
         company_id: req.query.company_id,
+        material_type_id: req.query.material_type_id,
         sort: req.query.sort,
         direction: req.query.direction,
         page: req.query.page || 1,

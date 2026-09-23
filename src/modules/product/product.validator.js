@@ -17,6 +17,36 @@ const validateCommon = async (req, isUpdate = false) => {
   const companyError = await companyScope.checkField(body.company_id, { required: true, mustBeActive: !isUpdate });
   if (companyError) errors.push(companyError);
 
+  // Inactive masters are accepted on update only when already assigned to this product.
+  const current = isUpdate ? await productRepository.findById(req.params.id) : null;
+
+  // uom_id — required, must exist; active unless unchanged
+  if (isBlank(body.uom_id)) {
+    errors.push('UOM is required');
+  } else {
+    const uom = isInteger(body.uom_id) ? await productRepository.findUom(Number(body.uom_id)) : null;
+    if (!uom) {
+      errors.push('Selected UOM does not exist');
+    } else if (uom.status !== 'active' && !(current && current.uom_id === uom.id)) {
+      errors.push('Selected UOM is inactive');
+    }
+  }
+
+  // material_type_id — optional; must exist, belong to the product's company, and be active unless unchanged
+  if (!isBlank(body.material_type_id)) {
+    const materialType = isInteger(body.material_type_id) ? await productRepository.findMaterialType(Number(body.material_type_id)) : null;
+    if (!materialType) {
+      errors.push('Selected material type does not exist');
+    } else {
+      if (!companyError && materialType.company_id !== Number(body.company_id)) {
+        errors.push('Selected material type belongs to a different company');
+      }
+      if (materialType.status !== 'active' && !(current && current.material_type_id === materialType.id)) {
+        errors.push('Selected material type is inactive');
+      }
+    }
+  }
+
   // category_id
   if (isBlank(body.category_id)) {
     errors.push('Category is required');

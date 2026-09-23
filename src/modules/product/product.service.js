@@ -52,6 +52,8 @@ export const productService = {
       const payload = {
         company_id: Number(data.company_id),
         category_id: data.category_id,
+        material_type_id: isBlank(data.material_type_id) ? null : Number(data.material_type_id),
+        uom_id: Number(data.uom_id),
         item_group_code: data.item_group_code,
         name: data.name,
         name_on_export_document: data.name_on_export_document || null,
@@ -109,6 +111,8 @@ export const productService = {
       const payload = {
         company_id: Number(data.company_id),
         category_id: data.category_id,
+        material_type_id: isBlank(data.material_type_id) ? null : Number(data.material_type_id),
+        uom_id: Number(data.uom_id),
         item_group_code: data.item_group_code,
         name: data.name,
         name_on_export_document: data.name_on_export_document || null,
@@ -296,17 +300,21 @@ export const productService = {
    * that for it either (calculation_basis_id lives on each incentive row).
    */
   getFormData: async (product = null) => {
-    const [categories, priceBands, gstRates, calculationBases, units] = await Promise.all([
+    const [categories, priceBands, gstRates, calculationBases, units, uoms, materialTypes] = await Promise.all([
       productRepository.getCategoriesForForm(product ? product.category_id : null),
       productRepository.getPriceBandsForForm(product ? product.price_band_id : null),
       productRepository.getGstRatesForForm(product ? product.gst_rate_id : null),
       productRepository.getActiveCalculationBases(),
-      productService.getUnitOptions(product)
+      productService.getUnitOptions(product),
+      productRepository.getUomsForForm(product ? product.uom_id : null),
+      productRepository.getMaterialTypesForForm(product ? product.material_type_id : null)
     ]);
 
     return {
       categories,
       units,
+      uoms,
+      materialTypes,
       priceBands: priceBands.map((pb) => ({ id: pb.id, label: `${pb.code} — ${pb.name}` })),
       gstRates: gstRates.map((gr) => ({ id: gr.id, label: formatGstRateLabel(gr.rate) })),
       calculationBases
@@ -319,8 +327,12 @@ export const productService = {
    * them any more, matching ProductController::unitOptions().
    */
   getUnitOptions: async (product = null) => {
-    const names = await productRepository.getDistinctUnits();
-    const set = new Set(names.filter(Boolean));
+    // Document units come from order-format unit chips plus the UOM master's codes.
+    const [names, uomCodes] = await Promise.all([
+      productRepository.getDistinctUnits(),
+      productRepository.getActiveUomCodes()
+    ]);
+    const set = new Set([...names, ...uomCodes].filter(Boolean));
 
     if (product) {
       if (product.unit_po) set.add(product.unit_po);

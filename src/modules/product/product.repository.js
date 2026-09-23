@@ -2,7 +2,7 @@ import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
 
 export const productRepository = {
-  findAll: async ({ search, status, category_id, company_id, sort, direction, page = 1, limit = 10 }) => {
+  findAll: async ({ search, status, category_id, company_id, material_type_id, sort, direction, page = 1, limit = 10 }) => {
     let query = `
       SELECT
         p.id, p.category_id, p.item_group_code, p.name, p.name_on_export_document,
@@ -10,11 +10,15 @@ export const productRepository = {
         p.created_at, p.updated_at,
         c.name AS category_name,
         gr.rate AS gst_rate,
-        p.company_id, co.code AS company_code, COALESCE(co.short_name, co.name) AS company_label
+        p.company_id, co.code AS company_code, COALESCE(co.short_name, co.name) AS company_label,
+        p.material_type_id, mt.name AS material_type_name,
+        p.uom_id, u.code AS uom_code
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
       LEFT JOIN gst_rates gr ON gr.id = p.gst_rate_id
       LEFT JOIN companies co ON co.id = p.company_id
+      LEFT JOIN material_types mt ON mt.id = p.material_type_id
+      LEFT JOIN uoms u ON u.id = p.uom_id
       WHERE p.deleted_at IS NULL
     `;
 
@@ -37,6 +41,11 @@ export const productRepository = {
     if (category_id !== undefined && category_id !== null && category_id !== '') {
       query += ` AND p.category_id = ?`;
       params.push(Number(category_id));
+    }
+
+    if (material_type_id !== undefined && material_type_id !== null && material_type_id !== '') {
+      query += ` AND p.material_type_id = ?`;
+      params.push(Number(material_type_id));
     }
 
     const companyFilter = companyScope.filterSql('p.company_id', companyScope.parseFilter(company_id));
@@ -98,12 +107,16 @@ export const productRepository = {
         gr.rate AS gst_rate,
         u1.name AS creator_name,
         u2.name AS updater_name,
-        co.code AS company_code, COALESCE(co.short_name, co.name) AS company_label
+        co.code AS company_code, COALESCE(co.short_name, co.name) AS company_label,
+        mt.code AS material_type_code, mt.name AS material_type_name,
+        u.code AS uom_code, u.name AS uom_name, u.decimal_places AS uom_decimal_places
       FROM products p
       LEFT JOIN categories c ON c.id = p.category_id
       LEFT JOIN price_bands pb ON pb.id = p.price_band_id
       LEFT JOIN gst_rates gr ON gr.id = p.gst_rate_id
       LEFT JOIN companies co ON co.id = p.company_id
+      LEFT JOIN material_types mt ON mt.id = p.material_type_id
+      LEFT JOIN uoms u ON u.id = p.uom_id
       LEFT JOIN users u1 ON u1.id = p.created_by
       LEFT JOIN users u2 ON u2.id = p.updated_by
       WHERE p.id = ? AND p.deleted_at IS NULL`,
@@ -183,13 +196,13 @@ export const productRepository = {
   create: async (connection, data) => {
     const [result] = await connection.query(
       `INSERT INTO products (
-        company_id, category_id, item_group_code, name, name_on_export_document, barcode,
+        company_id, category_id, material_type_id, uom_id, item_group_code, name, name_on_export_document, barcode,
         unit_po, unit_export, hsn_code, drawback_sr_no, price_band_id, gst_rate_id,
         fabric_length_mtr, fabric_width_inch, sq_mtr_per_unit, description, status, remarks,
         created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
-        data.company_id, data.category_id, data.item_group_code, data.name, data.name_on_export_document,
+        data.company_id, data.category_id, data.material_type_id, data.uom_id, data.item_group_code, data.name, data.name_on_export_document,
         data.barcode, data.unit_po, data.unit_export, data.hsn_code,
         data.drawback_sr_no, data.price_band_id, data.gst_rate_id,
         data.fabric_length_mtr, data.fabric_width_inch, data.sq_mtr_per_unit,
@@ -203,13 +216,13 @@ export const productRepository = {
   update: async (connection, id, data) => {
     await connection.query(
       `UPDATE products SET
-        company_id = ?, category_id = ?, item_group_code = ?, name = ?, name_on_export_document = ?, barcode = ?,
+        company_id = ?, category_id = ?, material_type_id = ?, uom_id = ?, item_group_code = ?, name = ?, name_on_export_document = ?, barcode = ?,
         unit_po = ?, unit_export = ?, hsn_code = ?, drawback_sr_no = ?, price_band_id = ?, gst_rate_id = ?,
         fabric_length_mtr = ?, fabric_width_inch = ?, sq_mtr_per_unit = ?, description = ?, status = ?, remarks = ?,
         updated_by = ?, updated_at = NOW()
       WHERE id = ? AND deleted_at IS NULL`,
       [
-        data.company_id, data.category_id, data.item_group_code, data.name, data.name_on_export_document, data.barcode,
+        data.company_id, data.category_id, data.material_type_id, data.uom_id, data.item_group_code, data.name, data.name_on_export_document, data.barcode,
         data.unit_po, data.unit_export, data.hsn_code, data.drawback_sr_no, data.price_band_id, data.gst_rate_id,
         data.fabric_length_mtr, data.fabric_width_inch, data.sq_mtr_per_unit, data.description, data.status, data.remarks,
         data.updated_by, id
@@ -282,6 +295,47 @@ export const productRepository = {
     query += ') ORDER BY name ASC';
     const [rows] = await pool.query(query, params);
     return rows;
+  },
+
+  getUomsForForm: async (includeId = null) => {
+    const params = ['active'];
+    let query = 'SELECT id, code, name, decimal_places, status FROM uoms WHERE deleted_at IS NULL AND (status = ?';
+    if (includeId) {
+      query += ' OR id = ?';
+      params.push(includeId);
+    }
+    query += ') ORDER BY code ASC';
+    const [rows] = await pool.query(query, params);
+    return rows;
+  },
+
+  /** Active material types of every company; the form narrows them to the selected company. */
+  getMaterialTypesForForm: async (includeId = null) => {
+    const params = ['active'];
+    let query = 'SELECT id, company_id, code, name, status FROM material_types WHERE deleted_at IS NULL AND (status = ?';
+    if (includeId) {
+      query += ' OR id = ?';
+      params.push(includeId);
+    }
+    query += ') ORDER BY name ASC';
+    const [rows] = await pool.query(query, params);
+    return rows;
+  },
+
+  /** Raw row (incl. status/company) for validation; soft-deleted rows count as missing. */
+  findUom: async (id) => {
+    const [rows] = await pool.query('SELECT id, status FROM uoms WHERE id = ? AND deleted_at IS NULL', [id]);
+    return rows[0] || null;
+  },
+
+  findMaterialType: async (id) => {
+    const [rows] = await pool.query('SELECT id, company_id, status FROM material_types WHERE id = ? AND deleted_at IS NULL', [id]);
+    return rows[0] || null;
+  },
+
+  getActiveUomCodes: async () => {
+    const [rows] = await pool.query("SELECT code FROM uoms WHERE status = 'active' AND deleted_at IS NULL");
+    return rows.map((r) => r.code);
   },
 
   getPriceBandsForForm: async (includeId = null) => {
