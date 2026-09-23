@@ -13,6 +13,8 @@ const OWNED_TABLES = [
   { table: 'quality_inspections', label: 'quality inspection' },
   { table: 'supplier_returns', label: 'supplier return' },
   { table: 'debit_notes', label: 'debit note' },
+  { table: 'stock_locations', label: 'stock location' },
+  { table: 'stock_movements', label: 'stock movement' },
   { table: 'export_documents', label: 'export document' },
 ];
 

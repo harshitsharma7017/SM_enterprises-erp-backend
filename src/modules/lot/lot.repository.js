@@ -1,6 +1,7 @@
 import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
 import { QC_TOTALS_BY_LOT, RETURN_TOTALS_BY_LOT } from '../quality-control/qc-ledger.js';
+import { STOCK_BY_LOT } from '../inventory/stock-ledger.js';
 
 const isSet = (v) => v !== undefined && v !== null && v !== '';
 
@@ -14,6 +15,8 @@ const SELECT = `
          COALESCE(qt.accepted_quantity, 0) AS qc_accepted_quantity,
          COALESCE(qt.rejected_quantity, 0) AS qc_rejected_quantity,
          COALESCE(rt.returned_quantity, 0) AS returned_quantity,
+         COALESCE(st.stock_quantity, 0) AS stock_quantity,
+         COALESCE(st.stock_received_quantity, 0) AS stock_received_quantity,
          CASE WHEN COALESCE(qt.inspected_quantity, 0) = 0 THEN 'not_inspected'
               WHEN qt.inspected_quantity < l.quantity THEN 'partially_inspected'
               ELSE 'inspected' END AS qc_state
@@ -26,6 +29,7 @@ const SELECT = `
   LEFT JOIN companies cmp ON cmp.id = l.company_id
   LEFT JOIN (${QC_TOTALS_BY_LOT}) qt ON qt.lot_id = l.id
   LEFT JOIN (${RETURN_TOTALS_BY_LOT}) rt ON rt.lot_id = l.id
+  LEFT JOIN (${STOCK_BY_LOT}) st ON st.lot_id = l.id
 `;
 
 /** Lot → GRN → PO → (OC) or (plan → requirement → projection). */
@@ -93,6 +97,8 @@ export const lotRepository = {
     const [inspections] = await pool.query(`
       SELECT qi.id, qi.qc_no, qi.inspection_date, qi.inspected_quantity, qi.accepted_quantity,
              qi.rejected_quantity, qi.status, qi.result,
+             (SELECT sm.movement_no FROM stock_movements sm
+              WHERE sm.quality_inspection_id = qi.id AND sm.movement_type = 'QC_ACCEPTED_RECEIPT') AS stock_movement_no,
              COALESCE((SELECT SUM(sr.quantity) FROM supplier_returns sr
                        WHERE sr.quality_inspection_id = qi.id AND sr.status = 'posted'), 0) AS returned_quantity
       FROM quality_inspections qi WHERE qi.lot_id = ? ORDER BY qi.id

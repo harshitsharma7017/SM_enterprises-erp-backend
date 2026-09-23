@@ -232,13 +232,17 @@ export const qualityControlService = {
   /**
    * draft/completed → cancelled. History is kept; the lot quantity is freed
    * for re-inspection. A completed QC with live returns or debit notes cannot
-   * be cancelled until those are cancelled.
+   * be cancelled until those are cancelled, and a QC posted to stock cannot be
+   * cancelled at all (its ledger movement is immutable).
    */
   cancel: async (id, reason, userId) => {
     await inTransaction(async (connection) => {
       const { qc } = await lockInspection(connection, id);
       if (qc.status === 'cancelled') throw rejected('This inspection is already cancelled.');
       const deps = await qualityControlRepository.countDependents(connection, id);
+      if (deps.stock_movements_count > 0) {
+        throw rejected(`${qc.qc_no} is posted to stock; its accepted quantity is in the stock ledger, so it cannot be cancelled.`);
+      }
       if (deps.returns_count > 0 || deps.debit_notes_count > 0) {
         throw rejected(`${qc.qc_no} has ${deps.returns_count} supplier return(s) and ${deps.debit_notes_count} debit note(s). Cancel them first.`);
       }

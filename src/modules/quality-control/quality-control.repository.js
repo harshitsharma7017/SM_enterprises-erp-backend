@@ -47,7 +47,9 @@ const QC_SELECT = `
          COALESCE(dt.debited_quantity, 0) AS debited_quantity,
          COALESCE(dt.debit_draft_quantity, 0) AS debit_draft_quantity,
          COALESCE(dt.debited_amount, 0) AS debited_amount,
-         u1.name AS creator_name, u2.name AS completer_name, u3.name AS canceller_name
+         u1.name AS creator_name, u2.name AS completer_name, u3.name AS canceller_name,
+         stk.id AS stock_movement_id, stk.movement_no AS stock_movement_no, stk.movement_date AS stock_movement_date,
+         stk.quantity AS stock_quantity, stk_loc.code AS stock_location_code, stk_loc.name AS stock_location_name
   FROM quality_inspections qi
   JOIN lots l ON l.id = qi.lot_id
   JOIN inward_entries ie ON ie.id = qi.inward_entry_id
@@ -61,6 +63,8 @@ const QC_SELECT = `
   LEFT JOIN users u1 ON u1.id = qi.created_by
   LEFT JOIN users u2 ON u2.id = qi.completed_by
   LEFT JOIN users u3 ON u3.id = qi.cancelled_by
+  LEFT JOIN stock_movements stk ON stk.quality_inspection_id = qi.id AND stk.movement_type = 'QC_ACCEPTED_RECEIPT'
+  LEFT JOIN stock_locations stk_loc ON stk_loc.id = stk.location_id
 `;
 
 const isSet = (v) => v !== undefined && v !== null && v !== '';
@@ -258,12 +262,13 @@ export const qualityControlRepository = {
     `, [userId, reason, userId, id]);
   },
 
-  /** Non-cancelled returns and debit notes that depend on a QC. */
+  /** Non-cancelled returns and debit notes, and stock movements, that depend on a QC. */
   countDependents: async (executor, id) => {
     const [[row]] = await executor.query(`
       SELECT (SELECT COUNT(*) FROM supplier_returns WHERE quality_inspection_id = ? AND status <> 'cancelled') AS returns_count,
-             (SELECT COUNT(*) FROM debit_notes WHERE quality_inspection_id = ? AND status <> 'cancelled') AS debit_notes_count
-    `, [id, id]);
+             (SELECT COUNT(*) FROM debit_notes WHERE quality_inspection_id = ? AND status <> 'cancelled') AS debit_notes_count,
+             (SELECT COUNT(*) FROM stock_movements WHERE quality_inspection_id = ?) AS stock_movements_count
+    `, [id, id, id]);
     return row;
   },
 };
