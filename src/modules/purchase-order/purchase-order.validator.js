@@ -1,4 +1,7 @@
 import Joi from 'joi';
+import { pool } from '../../config/database.js';
+import { validateGarmentPo } from './garment-po.validator.js';
+import { GARMENT_ORIGINS } from './garment-po.service.js';
 
 const itemColourSizeSchema = Joi.object({
   size: Joi.string().max(20).allow('', null),
@@ -54,8 +57,19 @@ const updateSchema = Joi.object({
   timeline: Joi.array().items(timelineSchema).optional()
 });
 
+const rejectGarment = (res, errors) => res.status(400).json({ success: false, message: 'Validation failed', errors });
+
 export const purchaseOrderValidator = {
   validateStore: (req, res, next) => {
+    // Planning-origin (garment) PO — no order confirmation involved.
+    if (GARMENT_ORIGINS.includes(req.body?.origin)) {
+      const { errors, items } = validateGarmentPo(req.body, { origin: req.body.origin });
+      if (errors.length > 0) return rejectGarment(res, errors);
+      req.body.items = items;
+      req.garmentPo = true;
+      return next();
+    }
+
     const { error, value } = storeSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
     if (error) {
       return res.status(422).json({
@@ -67,7 +81,21 @@ export const purchaseOrderValidator = {
     req.body = value;
     next();
   },
-  validateUpdate: (req, res, next) => {
+  validateUpdate: async (req, res, next) => {
+    // The saved PO's origin decides the rules; it cannot be changed by the request.
+    try {
+      const [rows] = await pool.query('SELECT origin FROM purchase_orders WHERE id = ? AND deleted_at IS NULL', [req.params.id]);
+      if (rows.length && GARMENT_ORIGINS.includes(rows[0].origin)) {
+        const { errors, items } = validateGarmentPo(req.body, { origin: rows[0].origin, isUpdate: true });
+        if (errors.length > 0) return rejectGarment(res, errors);
+        req.body.items = items;
+        req.garmentPo = true;
+        return next();
+      }
+    } catch (error) {
+      return next(error);
+    }
+
     const { error, value } = updateSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
     if (error) {
       return res.status(422).json({

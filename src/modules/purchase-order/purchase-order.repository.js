@@ -20,6 +20,10 @@ export const purchaseOrderRepository = {
       where += ` AND (po.po_num LIKE ? OR po.remarks LIKE ? OR s.company_name LIKE ? OR s.display_code LIKE ? OR oc.oc_num LIKE ?)`;
       params.push(term, term, term, term, term);
     }
+    if (['order_confirmation', 'material_requirement', 'material_plan'].includes(filters.origin)) {
+      where += ' AND po.origin = ?';
+      params.push(filters.origin);
+    }
     const companyFilter = companyScope.filterSql('po.company_id', companyScope.parseFilter(filters.company_id));
     where += companyFilter.sql;
     params.push(...companyFilter.params);
@@ -28,11 +32,13 @@ export const purchaseOrderRepository = {
       SELECT po.*,
              s.company_name as supplier_company_name, s.display_code as supplier_display_code,
              oc.oc_num,
-             cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
+             cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label,
+             mp.plan_no as material_plan_no
       FROM purchase_orders po
       LEFT JOIN suppliers s ON po.supplier_id = s.id
       LEFT JOIN order_confirmations oc ON po.order_confirmation_id = oc.id
       LEFT JOIN companies cmp ON cmp.id = po.company_id
+      LEFT JOIN material_plans mp ON mp.id = po.material_plan_id
     ` + where;
 
     const sortCol = ['id', 'po_num', 'po_date', 'status', 'created_at'].includes(filters.sort) ? filters.sort : 'created_at';
@@ -64,9 +70,17 @@ export const purchaseOrderRepository = {
 
   findById: async (id) => {
     const [rows] = await pool.query(`
-      SELECT po.*, cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
+      SELECT po.*, cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label,
+             s.company_name as supplier_company_name, s.display_code as supplier_display_code,
+             oc.oc_num, mp.plan_no as material_plan_no, mp.title as material_plan_title,
+             uc.name as confirmer_name, ux.name as canceller_name
       FROM purchase_orders po
       LEFT JOIN companies cmp ON cmp.id = po.company_id
+      LEFT JOIN suppliers s ON s.id = po.supplier_id
+      LEFT JOIN order_confirmations oc ON oc.id = po.order_confirmation_id
+      LEFT JOIN material_plans mp ON mp.id = po.material_plan_id
+      LEFT JOIN users uc ON uc.id = po.confirmed_by
+      LEFT JOIN users ux ON ux.id = po.cancelled_by
       WHERE po.id = ? AND po.deleted_at IS NULL
     `, [id]);
     
@@ -98,6 +112,28 @@ export const purchaseOrderRepository = {
     }
     
     po.items = items;
+
+    // Planning-origin lines: trace each back to plan → requirement → projection.
+    if (po.origin !== 'order_confirmation') {
+      const [trace] = await pool.query(`
+        SELECT poi.id AS line_id, poi.material_requirement_id, mr.requirement_no, mr.status AS requirement_status,
+               mr.brand_projection_id, bp.projection_no, br.name AS brand_name,
+               mpi.material_plan_id, mp.plan_no, p.name AS product_name, p.item_group_code,
+               u.code AS uom_code, u.decimal_places AS uom_decimal_places
+        FROM purchase_order_items poi
+        LEFT JOIN material_requirements mr ON mr.id = poi.material_requirement_id
+        LEFT JOIN brand_projections bp ON bp.id = mr.brand_projection_id
+        LEFT JOIN brand_projection_items bpi ON bpi.id = mr.brand_projection_item_id
+        LEFT JOIN brands br ON br.id = bp.brand_id
+        LEFT JOIN material_plan_items mpi ON mpi.id = poi.material_plan_item_id
+        LEFT JOIN material_plans mp ON mp.id = mpi.material_plan_id
+        LEFT JOIN products p ON p.id = poi.product_id
+        LEFT JOIN uoms u ON u.id = bpi.uom_id
+        WHERE poi.purchase_order_id = ?
+      `, [id]);
+      const traceById = Object.fromEntries(trace.map((t) => [t.line_id, t]));
+      po.items = items.map((item) => ({ ...item, trace: traceById[item.id] || null }));
+    }
 
     const [timeline] = await pool.query(`
       SELECT * FROM purchase_order_timeline_entries

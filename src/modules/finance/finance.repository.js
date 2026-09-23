@@ -120,7 +120,7 @@ export const financeRepository = {
              a.name as agent_name,
              s.agent_commission_type, s.agent_commission_value,
              COALESCE(SUM(poi.amount), 0) as total_amount,
-             COALESCE(SUM(poi.qty), 0) as total_qty
+             COALESCE(SUM(COALESCE(poi.ordered_quantity, poi.qty)), 0) as total_qty
       FROM purchase_orders po
       LEFT JOIN suppliers s ON s.id = po.supplier_id
       LEFT JOIN agents a ON a.id = s.agent_id

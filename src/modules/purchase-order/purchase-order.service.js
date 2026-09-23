@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { purchaseOrderRepository } from './purchase-order.repository.js';
+import { GARMENT_ORIGINS } from './garment-po.service.js';
 import { companyScope } from '../../services/company-scope.service.js';
 import { numberSeriesService } from '../../services/number-series.service.js';
 
@@ -86,7 +87,10 @@ export const purchaseOrderService = {
       await connection.beginTransaction();
 
       // Company (inherited from the OC) is not editable; only item products are checked.
-      const [poRows] = await connection.query('SELECT company_id FROM purchase_orders WHERE id = ?', [id]);
+      const [poRows] = await connection.query('SELECT company_id, status FROM purchase_orders WHERE id = ?', [id]);
+      if (poRows.length && poRows[0].status === 'cancelled') {
+        throw companyScope.error('A cancelled purchase order cannot be edited.');
+      }
       await companyScope.assertLinks(poRows.length ? poRows[0].company_id : null, {
         productIds: (data.items || []).map((item) => item && item.product_id),
       }, connection);
@@ -121,6 +125,13 @@ export const purchaseOrderService = {
     try {
       connection = await pool.getConnection();
       await connection.beginTransaction();
+
+      // Planning-origin POs are cancelled once confirmed, never deleted, so the
+      // ordered quantity history they carry stays intact.
+      const [rows] = await connection.query('SELECT origin, status FROM purchase_orders WHERE id = ?', [id]);
+      if (rows.length && GARMENT_ORIGINS.includes(rows[0].origin) && rows[0].status !== 'draft') {
+        throw companyScope.error('Only a draft planning purchase order can be deleted. Cancel it instead.');
+      }
 
       await purchaseOrderRepository.delete(connection, id);
 

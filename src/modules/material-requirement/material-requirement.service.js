@@ -94,6 +94,9 @@ export const materialRequirementService = {
       if (await materialRequirementRepository.countDraftPlans(connection, id) > 0) {
         throw rejected('This requirement is on a draft material plan. Remove it from the plan (or mark the plan planned) before closing.');
       }
+      if (await materialRequirementRepository.countDraftPurchaseOrders(connection, id) > 0) {
+        throw rejected('This requirement is on a draft purchase order. Remove it from the PO (or confirm or cancel the PO) before closing.');
+      }
       await materialRequirementRepository.setStatus(connection, id, 'closed', userId, remarks ? String(remarks).slice(0, 2000) : null);
     });
     return materialRequirementRepository.findById(id);
@@ -119,6 +122,9 @@ export const materialRequirementService = {
       if (existing.status !== 'open') throw rejected('Only an open requirement can be deleted.');
       if (await materialRequirementRepository.countActivePlans(connection, id) > 0) {
         throw rejected('This requirement is used on a material plan and cannot be deleted.');
+      }
+      if (await materialRequirementRepository.countPurchaseOrderLines(connection, id) > 0) {
+        throw rejected('This requirement is referenced by purchase orders and cannot be deleted.');
       }
       await materialRequirementRepository.deleteLinesOfDeletedPlans(connection, id);
       await materialRequirementRepository.hardDelete(connection, id);

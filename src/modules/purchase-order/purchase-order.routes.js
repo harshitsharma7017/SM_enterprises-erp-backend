@@ -2,7 +2,7 @@ import express from 'express';
 import { purchaseOrderController } from './purchase-order.controller.js';
 import { purchaseOrderValidator } from './purchase-order.validator.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
-import { requirePermission } from '../../middleware/rbac.middleware.js';
+import { requirePermission, requireAnyPermission } from '../../middleware/rbac.middleware.js';
 
 const router = express.Router();
 
@@ -21,6 +21,19 @@ router.post(
   purchaseOrderValidator.validateStore,
   purchaseOrderController.store
 );
+
+// GET /api/procurement/purchase-orders/procurement-sources — planning-origin PO form data
+router.get(
+  '/procurement-sources',
+  requireAnyPermission(['purchase-order.create', 'purchase-order.edit']),
+  purchaseOrderController.sources
+);
+
+// POST /api/procurement/purchase-orders/:id/confirm
+router.post('/:id/confirm', requirePermission('purchase-order.approve'), purchaseOrderController.confirm);
+
+// POST /api/procurement/purchase-orders/:id/cancel
+router.post('/:id/cancel', requirePermission('purchase-order.approve'), purchaseOrderController.cancel);
 
 // GET /api/procurement/purchase-orders/:id
 router.get('/:id', requirePermission('purchase-order.view'), purchaseOrderController.show);

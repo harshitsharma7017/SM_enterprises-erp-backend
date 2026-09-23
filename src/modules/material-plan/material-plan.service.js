@@ -143,6 +143,9 @@ export const materialPlanService = {
       const existing = await materialPlanRepository.lock(connection, id);
       if (!existing) throw notFound();
       if (existing.status !== 'planned') throw rejected('Only a planned material plan can be reverted to draft.');
+      if (await materialPlanRepository.countLivePurchaseOrderLines(connection, id) > 0) {
+        throw rejected('Purchase orders have been raised from this plan. Cancel them before reverting the plan to draft.');
+      }
       await materialPlanRepository.setStatus(connection, id, 'draft', userId);
       const lines = await materialPlanRepository.findItems(connection, id);
       await materialRequirementService.recalculateStatuses(connection, lines.map((l) => l.material_requirement_id));

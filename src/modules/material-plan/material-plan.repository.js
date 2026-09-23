@@ -1,6 +1,7 @@
 import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
 import { materialRequirementRepository } from '../material-requirement/material-requirement.repository.js';
+import { PLAN_ITEM_ORDER_AGGREGATE } from '../purchase-order/garment-po.repository.js';
 
 const isSet = (v) => v !== undefined && v !== null && v !== '';
 
@@ -9,8 +10,12 @@ const attachItems = async (plans, executor = pool) => {
   if (plans.length === 0) return plans;
   const [items] = await executor.query(`
     SELECT mpi.id, mpi.material_plan_id, mpi.sort_order, mpi.material_requirement_id,
-           mpi.planned_quantity, mpi.remarks
+           mpi.planned_quantity, mpi.remarks,
+           COALESCE(pio.ordered_qty, 0) AS ordered_quantity,
+           COALESCE(pio.reserved_qty, 0) AS order_reserved_quantity,
+           mpi.planned_quantity - COALESCE(pio.ordered_qty, 0) AS order_pending_quantity
     FROM material_plan_items mpi
+    LEFT JOIN (${PLAN_ITEM_ORDER_AGGREGATE}) pio ON pio.source_id = mpi.id
     WHERE mpi.material_plan_id IN (?)
     ORDER BY mpi.sort_order ASC, mpi.id ASC
   `, [plans.map((p) => p.id)]);
@@ -172,6 +177,17 @@ export const materialPlanRepository = {
       'UPDATE material_plans SET status = ?, updated_by = ?, updated_at = NOW() WHERE id = ?',
       [status, userId, id]
     );
+  },
+
+  /** Purchase-order lines on live (not cancelled / deleted) POs that draw on this plan. */
+  countLivePurchaseOrderLines: async (connection, planId) => {
+    const [rows] = await connection.query(`
+      SELECT COUNT(*) AS cnt FROM purchase_order_items poi
+      JOIN material_plan_items mpi ON mpi.id = poi.material_plan_item_id
+      JOIN purchase_orders po ON po.id = poi.purchase_order_id
+      WHERE mpi.material_plan_id = ? AND po.deleted_at IS NULL AND po.status <> 'cancelled'
+    `, [planId]);
+    return rows[0].cnt;
   },
 
   softDelete: async (id) => {

@@ -50,6 +50,18 @@ export const inwardEntryService = {
       if (po.status === 'received') {
         throw new Error('Purchase Order is already fully received.');
       }
+      if (po.status === 'cancelled') {
+        const err = new Error('Purchase Order is cancelled.');
+        err.status = 422;
+        throw err;
+      }
+      // Planning-origin (garment) POs are received through the GRN, a later phase —
+      // their metre-based quantities do not fit this integer inward entry.
+      if (po.origin && po.origin !== 'order_confirmation') {
+        const err = new Error('Planning purchase orders cannot be received through Goods Inward yet.');
+        err.status = 422;
+        throw err;
+      }
 
       const financialYear = financialYearFor(new Date(data.inward_date));
       await ensureNumberSeries(connection, 'inward', 'GT/INW/', financialYear);

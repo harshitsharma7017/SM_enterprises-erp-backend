@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
+import { REQUIREMENT_ORDER_AGGREGATE } from '../purchase-order/garment-po.repository.js';
 
 const isSet = (v) => v !== undefined && v !== null && v !== '';
 
@@ -11,6 +12,12 @@ const isSet = (v) => v !== undefined && v !== null && v !== '';
  *   allocated_quantity = quantity on every non-deleted plan, drafts included
  *   pending_quantity   = required − planned
  *   available_quantity = required − allocated (what a new plan may still take)
+ *
+ * Procurement (Phase 4) — POs in raised/partial/received count as ordered;
+ * draft POs only reserve; cancelled POs count for nothing:
+ *   ordered_quantity        = quantity on confirmed purchase orders
+ *   order_reserved_quantity = quantity on draft purchase orders
+ *   order_pending_quantity  = required − ordered
  */
 const SELECT = `
   SELECT mr.id, mr.company_id, mr.requirement_no, mr.financial_year, mr.brand_projection_id,
@@ -24,6 +31,9 @@ const SELECT = `
          COALESCE(alloc.allocated_qty, 0) AS allocated_quantity,
          bpi.quantity - COALESCE(alloc.committed_qty, 0) AS pending_quantity,
          bpi.quantity - COALESCE(alloc.allocated_qty, 0) AS available_quantity,
+         COALESCE(ro.ordered_qty, 0) AS ordered_quantity,
+         COALESCE(ro.reserved_qty, 0) AS order_reserved_quantity,
+         bpi.quantity - COALESCE(ro.ordered_qty, 0) AS order_pending_quantity,
          cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label
   FROM material_requirements mr
   JOIN brand_projections bp ON bp.id = mr.brand_projection_id
@@ -41,6 +51,7 @@ const SELECT = `
     JOIN material_plans mp ON mp.id = mpi.material_plan_id AND mp.deleted_at IS NULL
     GROUP BY mpi.material_requirement_id
   ) alloc ON alloc.material_requirement_id = mr.id
+  LEFT JOIN (${REQUIREMENT_ORDER_AGGREGATE}) ro ON ro.source_id = mr.id
 `;
 
 export const materialRequirementRepository = {
@@ -98,6 +109,17 @@ export const materialRequirementRepository = {
       ORDER BY mp.id ASC
     `, [id]);
     requirement.plans = plans;
+
+    const [purchaseOrders] = await executor.query(`
+      SELECT po.id AS purchase_order_id, po.po_num, po.status, po.origin, po.po_date,
+             s.company_name AS supplier_name, poi.ordered_quantity
+      FROM purchase_order_items poi
+      JOIN purchase_orders po ON po.id = poi.purchase_order_id AND po.deleted_at IS NULL
+      LEFT JOIN suppliers s ON s.id = po.supplier_id
+      WHERE poi.material_requirement_id = ?
+      ORDER BY po.id ASC
+    `, [id]);
+    requirement.purchase_orders = purchaseOrders;
     return requirement;
   },
 
@@ -159,6 +181,22 @@ export const materialRequirementRepository = {
       SELECT COUNT(*) as cnt FROM material_plan_items mpi
       JOIN material_plans mp ON mp.id = mpi.material_plan_id
       WHERE mpi.material_requirement_id = ? AND mp.deleted_at IS NULL
+    `, [id]);
+    return rows[0].cnt;
+  },
+
+  /** Purchase-order lines (any status, including cancelled/deleted POs) referencing it. */
+  countPurchaseOrderLines: async (connection, id) => {
+    const [rows] = await connection.query('SELECT COUNT(*) as cnt FROM purchase_order_items WHERE material_requirement_id = ?', [id]);
+    return rows[0].cnt;
+  },
+
+  /** Draft purchase orders (not deleted) that include this requirement. */
+  countDraftPurchaseOrders: async (connection, id) => {
+    const [rows] = await connection.query(`
+      SELECT COUNT(*) as cnt FROM purchase_order_items poi
+      JOIN purchase_orders po ON po.id = poi.purchase_order_id
+      WHERE poi.material_requirement_id = ? AND po.deleted_at IS NULL AND po.status = 'draft'
     `, [id]);
     return rows[0].cnt;
   },
