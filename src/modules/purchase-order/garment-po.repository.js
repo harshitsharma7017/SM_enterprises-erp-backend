@@ -208,7 +208,7 @@ export const garmentPoRepository = {
 
   countInwardEntries: async (connection, poId) => {
     const [rows] = await connection.query(
-      'SELECT COUNT(*) AS cnt FROM inward_entries WHERE purchase_order_id = ? AND deleted_at IS NULL',
+      "SELECT COUNT(*) AS cnt FROM inward_entries WHERE purchase_order_id = ? AND deleted_at IS NULL AND receipt_status <> 'cancelled'",
       [poId]
     );
     return rows[0].cnt;

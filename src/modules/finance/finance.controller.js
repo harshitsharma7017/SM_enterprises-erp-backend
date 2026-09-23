@@ -30,16 +30,6 @@ export const financeController = {
     }
   },
 
-  debitNotes: async (req, res, next) => {
-    try {
-      const { page, limit, offset } = getPagination(req);
-      const result = await financeRepository.getDebitNotes(req.query, limit, offset);
-      sendPaginatedResponse(res, result, page, limit);
-    } catch (error) {
-      next(error);
-    }
-  },
-
   supplierPayments: async (req, res, next) => {
     try {
       const { page, limit, offset } = getPagination(req);

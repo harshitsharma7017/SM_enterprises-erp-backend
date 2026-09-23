@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
+import { RECEIVED_CONDITION } from '../inward-entry/inward-entry.repository.js';
 
 export const purchaseOrderRepository = {
   findAll: async (filters = {}) => {
@@ -111,7 +112,32 @@ export const purchaseOrderRepository = {
       item.colours = colours;
     }
     
+    // Receiving progress per line: quantity on POSTED goods receipts.
+    const [received] = await pool.query(`
+      SELECT iei.purchase_order_item_id, SUM(COALESCE(iei.received_quantity, iei.received_qty)) AS received
+      FROM inward_entry_items iei
+      JOIN inward_entries ie ON ie.id = iei.inward_entry_id
+      JOIN purchase_order_items poi ON poi.id = iei.purchase_order_item_id
+      WHERE poi.purchase_order_id = ? AND ${RECEIVED_CONDITION}
+      GROUP BY iei.purchase_order_item_id
+    `, [id]);
+    const receivedById = Object.fromEntries(received.map((r) => [r.purchase_order_item_id, Number(r.received)]));
+    for (const item of items) {
+      const ordered = Number(item.ordered_quantity ?? item.qty) || 0;
+      item.received_quantity = receivedById[item.id] || 0;
+      item.pending_quantity = Math.max(ordered - item.received_quantity, 0);
+    }
+
     po.items = items;
+
+    const [receipts] = await pool.query(`
+      SELECT ie.id, ie.inward_no, ie.inward_date, ie.entry_type, ie.receipt_status, ie.status AS qc_status,
+             (SELECT COUNT(*) FROM lots l WHERE l.inward_entry_id = ie.id) AS lots_count
+      FROM inward_entries ie
+      WHERE ie.purchase_order_id = ? AND ie.deleted_at IS NULL
+      ORDER BY ie.id ASC
+    `, [id]);
+    po.receipts = receipts;
 
     // Planning-origin lines: trace each back to plan → requirement → projection.
     if (po.origin !== 'order_confirmation') {

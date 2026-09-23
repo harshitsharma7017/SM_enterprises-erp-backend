@@ -11,14 +11,15 @@ export const MAX_QUANTITY = 999999999;
 export const quantity = {
   /**
    * Returns an error message, or null when `value` is a positive number with
-   * no more decimals than the unit allows.
+   * no more decimals than the unit allows. `allowZero` also accepts 0 (e.g. a
+   * QC rejected quantity when everything passed).
    */
-  validate: (value, decimalPlaces, label = 'Quantity') => {
+  validate: (value, decimalPlaces, label = 'Quantity', { allowZero = false } = {}) => {
     if (value === undefined || value === null || String(value).trim() === '') return `${label} is required`;
     const text = String(value).trim();
-    if (!/^\d+(\.\d+)?$/.test(text)) return `${label} must be a positive number`;
+    if (!/^\d+(\.\d+)?$/.test(text)) return `${label} must be a ${allowZero ? 'non-negative' : 'positive'} number`;
     const n = Number(text);
-    if (!(n > 0)) return `${label} must be greater than zero`;
+    if (!allowZero && !(n > 0)) return `${label} must be greater than zero`;
     if (n > MAX_QUANTITY) return `${label} cannot exceed ${MAX_QUANTITY}`;
     const decimals = (text.split('.')[1] || '').replace(/0+$/, '').length;
     const allowed = Number(decimalPlaces) || 0;

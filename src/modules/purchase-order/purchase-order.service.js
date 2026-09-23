@@ -91,6 +91,14 @@ export const purchaseOrderService = {
       if (poRows.length && poRows[0].status === 'cancelled') {
         throw companyScope.error('A cancelled purchase order cannot be edited.');
       }
+      // Editing replaces every line, which receipts reference — so it stops once goods are recorded.
+      const [receipts] = await connection.query(
+        "SELECT COUNT(*) AS cnt FROM inward_entries WHERE purchase_order_id = ? AND deleted_at IS NULL AND receipt_status <> 'cancelled'",
+        [id]
+      );
+      if (receipts[0].cnt > 0) {
+        throw companyScope.error('Goods receipts exist for this purchase order, so its lines can no longer be edited.');
+      }
       await companyScope.assertLinks(poRows.length ? poRows[0].company_id : null, {
         productIds: (data.items || []).map((item) => item && item.product_id),
       }, connection);

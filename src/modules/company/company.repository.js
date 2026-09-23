@@ -8,7 +8,11 @@ const OWNED_TABLES = [
   { table: 'inquiries', label: 'inquiry' },
   { table: 'order_confirmations', label: 'order confirmation' },
   { table: 'purchase_orders', label: 'purchase order' },
-  { table: 'inward_entries', label: 'inward entry' },
+  { table: 'inward_entries', label: 'goods receipt' },
+  { table: 'lots', label: 'lot' },
+  { table: 'quality_inspections', label: 'quality inspection' },
+  { table: 'supplier_returns', label: 'supplier return' },
+  { table: 'debit_notes', label: 'debit note' },
   { table: 'export_documents', label: 'export document' },
 ];
 

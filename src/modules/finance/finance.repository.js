@@ -31,26 +31,6 @@ export const financeRepository = {
     return { data: rows, total: countRows[0].total };
   },
 
-  getDebitNotes: async (filters, limit, offset) => {
-    // Original ERP: PurchaseOrder::totalAmount() — sum of line-item amounts.
-    const query = `
-      SELECT po.id, po.po_num, po.financial_year, po.status,
-             s.company_name as supplier_name,
-             COALESCE(SUM(poi.amount), 0) as total_amount
-      FROM purchase_orders po
-      LEFT JOIN suppliers s ON s.id = po.supplier_id
-      LEFT JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
-      WHERE po.deleted_at IS NULL
-      GROUP BY po.id
-      ORDER BY po.id DESC
-      LIMIT ? OFFSET ?
-    `;
-    const [rows] = await pool.query(query, [limit, offset]);
-
-    const [countRows] = await pool.query(`SELECT COUNT(*) as total FROM purchase_orders WHERE deleted_at IS NULL`);
-    return { data: rows, total: countRows[0].total };
-  },
-
   getSupplierPayments: async (filters, limit, offset) => {
     // Original ERP: PurchaseOrder::totalAmount() — sum of line-item amounts.
     const query = `
