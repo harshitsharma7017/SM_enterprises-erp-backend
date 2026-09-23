@@ -1,4 +1,5 @@
 import { pool } from '../../config/database.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 export const inwardEntryRepository = {
   findAll: async (filters = {}) => {
@@ -7,12 +8,14 @@ export const inwardEntryRepository = {
         po.po_num as purchase_order_num,
         s.company_name as supplier_name,
         u1.name as creator_name,
-        u2.name as qc_inspector_name
+        u2.name as qc_inspector_name,
+        cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
       FROM inward_entries ie
       LEFT JOIN purchase_orders po ON po.id = ie.purchase_order_id
       LEFT JOIN suppliers s ON s.id = ie.supplier_id
       LEFT JOIN users u1 ON u1.id = ie.created_by
       LEFT JOIN users u2 ON u2.id = ie.qc_inspected_by
+      LEFT JOIN companies cmp ON cmp.id = ie.company_id
       WHERE ie.deleted_at IS NULL
     `;
     const params = [];
@@ -26,6 +29,10 @@ export const inwardEntryRepository = {
       query += ` AND ie.purchase_order_id = ?`;
       params.push(filters.purchase_order_id);
     }
+
+    const companyFilter = companyScope.filterSql('ie.company_id', companyScope.parseFilter(filters.company_id));
+    query += companyFilter.sql;
+    params.push(...companyFilter.params);
 
     query += ` ORDER BY ie.id DESC`;
 
@@ -50,12 +57,14 @@ export const inwardEntryRepository = {
         po.po_num as purchase_order_num,
         s.company_name as supplier_name,
         u1.name as creator_name,
-        u2.name as qc_inspector_name
+        u2.name as qc_inspector_name,
+        cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
       FROM inward_entries ie
       LEFT JOIN purchase_orders po ON po.id = ie.purchase_order_id
       LEFT JOIN suppliers s ON s.id = ie.supplier_id
       LEFT JOIN users u1 ON u1.id = ie.created_by
       LEFT JOIN users u2 ON u2.id = ie.qc_inspected_by
+      LEFT JOIN companies cmp ON cmp.id = ie.company_id
       WHERE ie.id = ? AND ie.deleted_at IS NULL
     `, [id]);
     

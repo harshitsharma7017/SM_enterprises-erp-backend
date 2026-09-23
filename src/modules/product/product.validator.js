@@ -1,4 +1,5 @@
 import { productRepository } from './product.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 const SCHEMES = ['drawback', 'rosctl', 'rodtep'];
 const TWO_PERCENT_SCHEMES = ['rosctl'];
@@ -11,6 +12,10 @@ const validateCommon = async (req, isUpdate = false) => {
   const body = req.body || {};
   const errors = [];
   const ignoreId = isUpdate ? req.params.id : null;
+
+  // company_id — required: every product belongs to one company
+  const companyError = await companyScope.checkField(body.company_id, { required: true, mustBeActive: !isUpdate });
+  if (companyError) errors.push(companyError);
 
   // category_id
   if (isBlank(body.category_id)) {

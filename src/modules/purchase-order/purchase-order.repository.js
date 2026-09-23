@@ -1,31 +1,39 @@
 import { pool } from '../../config/database.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 export const purchaseOrderRepository = {
   findAll: async (filters = {}) => {
-    let sql = `
-      SELECT po.*,
-             s.company_name as supplier_company_name, s.display_code as supplier_display_code,
-             oc.oc_num
-      FROM purchase_orders po
-      LEFT JOIN suppliers s ON po.supplier_id = s.id
-      LEFT JOIN order_confirmations oc ON po.order_confirmation_id = oc.id
-      WHERE po.deleted_at IS NULL
-    `;
+    // Shared WHERE clause so the total below counts the same filtered set.
+    let where = ' WHERE po.deleted_at IS NULL';
     const params = [];
 
     if (filters.supplier_id) {
-      sql += ' AND po.supplier_id = ?';
+      where += ' AND po.supplier_id = ?';
       params.push(filters.supplier_id);
     }
     if (filters.status) {
-      sql += ' AND po.status = ?';
+      where += ' AND po.status = ?';
       params.push(filters.status);
     }
     if (filters.search) {
       const term = `%${filters.search}%`;
-      sql += ` AND (po.po_num LIKE ? OR po.remarks LIKE ? OR s.company_name LIKE ? OR s.display_code LIKE ? OR oc.oc_num LIKE ?)`;
+      where += ` AND (po.po_num LIKE ? OR po.remarks LIKE ? OR s.company_name LIKE ? OR s.display_code LIKE ? OR oc.oc_num LIKE ?)`;
       params.push(term, term, term, term, term);
     }
+    const companyFilter = companyScope.filterSql('po.company_id', companyScope.parseFilter(filters.company_id));
+    where += companyFilter.sql;
+    params.push(...companyFilter.params);
+
+    let sql = `
+      SELECT po.*,
+             s.company_name as supplier_company_name, s.display_code as supplier_display_code,
+             oc.oc_num,
+             cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
+      FROM purchase_orders po
+      LEFT JOIN suppliers s ON po.supplier_id = s.id
+      LEFT JOIN order_confirmations oc ON po.order_confirmation_id = oc.id
+      LEFT JOIN companies cmp ON cmp.id = po.company_id
+    ` + where;
 
     const sortCol = ['id', 'po_num', 'po_date', 'status', 'created_at'].includes(filters.sort) ? filters.sort : 'created_at';
     const direction = String(filters.direction).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
@@ -39,13 +47,12 @@ export const purchaseOrderRepository = {
 
     const [rows] = await pool.query(sql, params);
     
-    let countSql = `
+    const countSql = `
       SELECT COUNT(*) as total 
       FROM purchase_orders po
       LEFT JOIN suppliers s ON po.supplier_id = s.id
       LEFT JOIN order_confirmations oc ON po.order_confirmation_id = oc.id
-      WHERE po.deleted_at IS NULL
-    `;
+    ` + where;
     const countParams = [...params];
     if (filters.limit) {
       countParams.splice(-2, 2);
@@ -57,8 +64,9 @@ export const purchaseOrderRepository = {
 
   findById: async (id) => {
     const [rows] = await pool.query(`
-      SELECT po.*
+      SELECT po.*, cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
       FROM purchase_orders po
+      LEFT JOIN companies cmp ON cmp.id = po.company_id
       WHERE po.id = ? AND po.deleted_at IS NULL
     `, [id]);
     
@@ -107,12 +115,12 @@ export const purchaseOrderRepository = {
     
     const [result] = await connection.query(`
       INSERT INTO purchase_orders (
-        po_num, financial_year, order_confirmation_id, supplier_id, po_date, 
+        company_id, po_num, financial_year, order_confirmation_id, supplier_id, po_date,
         dispatch_date, delivery_details, packing_details, remarks, status, 
         created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      data.po_num, data.financial_year, data.order_confirmation_id, data.supplier_id, data.po_date,
+      data.company_id ?? null, data.po_num, data.financial_year, data.order_confirmation_id, data.supplier_id, data.po_date,
       data.dispatch_date || null, data.delivery_details || null, data.packing_details || null, 
       data.remarks || null, data.status || 'draft',
       data.created_by || null, data.updated_by || null, timestamp, timestamp

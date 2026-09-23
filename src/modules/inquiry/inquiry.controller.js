@@ -82,6 +82,7 @@ export const inquiryController = {
         search: req.query.search,
         status: req.query.status,
         buyer_id: req.query.buyer_id,
+        company_id: req.query.company_id,
         sort: req.query.sort,
         direction: req.query.direction,
         page: req.query.page || 1,
@@ -242,7 +243,7 @@ export const inquiryController = {
 
   products: async (req, res, next) => {
     try {
-      const products = await inquiryService.products(req.query.category_id);
+      const products = await inquiryService.products(req.query.category_id, req.query.company_id);
       res.status(200).json(products);
     } catch (error) {
       next(error);
@@ -251,7 +252,7 @@ export const inquiryController = {
 
   suppliers: async (req, res, next) => {
     try {
-      const suppliers = await inquiryService.suppliers(req.query.category_id);
+      const suppliers = await inquiryService.suppliers(req.query.category_id, req.query.company_id);
       res.status(200).json(suppliers);
     } catch (error) {
       next(error);

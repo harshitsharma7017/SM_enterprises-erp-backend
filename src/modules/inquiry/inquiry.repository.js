@@ -1,7 +1,8 @@
 import { pool } from '../../config/database.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 const HEADER_COLUMNS = `
-  i.id, i.inquiry_no, i.financial_year, i.inquiry_date, i.buyer_ref, i.source_id,
+  i.id, i.company_id, i.inquiry_no, i.financial_year, i.inquiry_date, i.buyer_ref, i.source_id,
   i.buyer_id, i.category_id, i.document_format_id, i.agent_id,
   i.agent_commission_type, i.agent_commission_value, i.currency_id, i.exchange_rate,
   i.expected_shipment_date, i.delivery_details, i.packing_details, i.remarks,
@@ -9,17 +10,19 @@ const HEADER_COLUMNS = `
 `;
 
 export const inquiryRepository = {
-  findAll: async ({ search, status, buyer_id, sort, direction, page = 1, limit = 15 }) => {
+  findAll: async ({ search, status, buyer_id, company_id, sort, direction, page = 1, limit = 15 }) => {
     let query = `
       SELECT ${HEADER_COLUMNS},
         b.company_name AS buyer_company_name, b.display_code AS buyer_display_code,
         c.name AS category_name,
         df.name AS format_name,
+        cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
         (SELECT COUNT(*) FROM inquiry_items ii WHERE ii.inquiry_id = i.id) AS items_count
       FROM inquiries i
       LEFT JOIN buyers b ON b.id = i.buyer_id
       LEFT JOIN categories c ON c.id = i.category_id
       LEFT JOIN document_formats df ON df.id = i.document_format_id
+      LEFT JOIN companies cmp ON cmp.id = i.company_id
       WHERE i.deleted_at IS NULL
     `;
 
@@ -41,6 +44,10 @@ export const inquiryRepository = {
       query += ` AND i.buyer_id = ?`;
       params.push(Number(buyer_id));
     }
+
+    const companyFilter = companyScope.filterSql('i.company_id', companyScope.parseFilter(company_id));
+    query += companyFilter.sql;
+    params.push(...companyFilter.params);
 
     const allowedSortFields = {
       id: 'i.id',
@@ -77,9 +84,11 @@ export const inquiryRepository = {
    * Counted across every non-deleted inquiry, not the filtered page —
    * matches InquiryController::index()'s $byStatus strip exactly.
    */
-  getStatusStats: async () => {
+  getStatusStats: async (companyId) => {
+    const companyFilter = companyScope.filterSql('company_id', companyScope.parseFilter(companyId));
     const [rows] = await pool.query(
-      `SELECT status, COUNT(*) as count FROM inquiries WHERE deleted_at IS NULL GROUP BY status`
+      `SELECT status, COUNT(*) as count FROM inquiries WHERE deleted_at IS NULL${companyFilter.sql} GROUP BY status`,
+      companyFilter.params
     );
 
     const byStatus = {};
@@ -113,7 +122,8 @@ export const inquiryRepository = {
         ag.name AS agent_name, ag.display_code AS agent_display_code,
         cur.iso_code AS currency_iso_code, cur.name AS currency_name, cur.symbol AS currency_symbol,
         src.name AS source_name,
-        u1.name AS creator_name, u2.name AS updater_name
+        u1.name AS creator_name, u2.name AS updater_name,
+        cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label
       FROM inquiries i
       LEFT JOIN buyers b ON b.id = i.buyer_id
       LEFT JOIN categories c ON c.id = i.category_id
@@ -123,6 +133,7 @@ export const inquiryRepository = {
       LEFT JOIN inquiry_sources src ON src.id = i.source_id
       LEFT JOIN users u1 ON u1.id = i.created_by
       LEFT JOIN users u2 ON u2.id = i.updated_by
+      LEFT JOIN companies cmp ON cmp.id = i.company_id
       WHERE i.id = ? AND i.deleted_at IS NULL`,
       [id]
     );
@@ -186,14 +197,14 @@ export const inquiryRepository = {
   create: async (connection, data) => {
     const [result] = await connection.query(
       `INSERT INTO inquiries (
-        inquiry_no, financial_year, inquiry_date, buyer_ref, source_id,
+        company_id, inquiry_no, financial_year, inquiry_date, buyer_ref, source_id,
         buyer_id, category_id, document_format_id, agent_id,
         agent_commission_type, agent_commission_value, currency_id, exchange_rate,
         expected_shipment_date, delivery_details, packing_details, remarks, status,
         created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
-        data.inquiry_no, data.financial_year, data.inquiry_date, data.buyer_ref, data.source_id,
+        data.company_id, data.inquiry_no, data.financial_year, data.inquiry_date, data.buyer_ref, data.source_id,
         data.buyer_id, data.category_id, data.document_format_id, data.agent_id,
         data.agent_commission_type, data.agent_commission_value, data.currency_id, data.exchange_rate,
         data.expected_shipment_date, data.delivery_details, data.packing_details, data.remarks, data.status,
@@ -206,14 +217,14 @@ export const inquiryRepository = {
   update: async (connection, id, data) => {
     await connection.query(
       `UPDATE inquiries SET
-        inquiry_date = ?, buyer_ref = ?, source_id = ?,
+        company_id = ?, inquiry_date = ?, buyer_ref = ?, source_id = ?,
         buyer_id = ?, category_id = ?, document_format_id = ?, agent_id = ?,
         agent_commission_type = ?, agent_commission_value = ?, currency_id = ?, exchange_rate = ?,
         expected_shipment_date = ?, delivery_details = ?, packing_details = ?, remarks = ?, status = ?,
         updated_by = ?, updated_at = NOW()
       WHERE id = ? AND deleted_at IS NULL`,
       [
-        data.inquiry_date, data.buyer_ref, data.source_id,
+        data.company_id, data.inquiry_date, data.buyer_ref, data.source_id,
         data.buyer_id, data.category_id, data.document_format_id, data.agent_id,
         data.agent_commission_type, data.agent_commission_value, data.currency_id, data.exchange_rate,
         data.expected_shipment_date, data.delivery_details, data.packing_details, data.remarks, data.status,
@@ -387,7 +398,7 @@ export const inquiryRepository = {
 
   getActiveBuyersForForm: async () => {
     const [rows] = await pool.query(
-      `SELECT id, company_name, display_code, agent_id, agent_commission_type, agent_commission_value, currency_id
+      `SELECT id, company_id, company_name, display_code, agent_id, agent_commission_type, agent_commission_value, currency_id
        FROM buyers WHERE status = 'active' AND deleted_at IS NULL ORDER BY company_name ASC`
     );
     return rows;
@@ -446,13 +457,16 @@ export const inquiryRepository = {
 
   // -- products()/suppliers() cascade lookups --
 
-  getProductsForCascade: async (categoryId) => {
-    let query = `SELECT id, name, item_group_code, unit_po, unit_export FROM products WHERE status = 'active' AND deleted_at IS NULL`;
+  getProductsForCascade: async (categoryId, companyId) => {
+    let query = `SELECT id, name, item_group_code, unit_po, unit_export, company_id FROM products WHERE status = 'active' AND deleted_at IS NULL`;
     const params = [];
     if (categoryId !== undefined && categoryId !== null && categoryId !== '') {
       query += ' AND category_id = ?';
       params.push(Number(categoryId));
     }
+    const companyFilter = companyScope.filterSql('company_id', companyScope.parseFilter(companyId), { includeShared: true });
+    query += companyFilter.sql;
+    params.push(...companyFilter.params);
     query += ' ORDER BY name ASC';
     const [products] = await pool.query(query, params);
 
@@ -481,7 +495,7 @@ export const inquiryRepository = {
     }));
   },
 
-  getSuppliersForCascade: async (categoryId) => {
+  getSuppliersForCascade: async (categoryId, companyId) => {
     let query = `
       SELECT DISTINCT s.id, s.company_name
       FROM suppliers s
@@ -493,8 +507,11 @@ export const inquiryRepository = {
       params.push(Number(categoryId));
     }
 
-    query += ` WHERE s.status = 'active' AND s.deleted_at IS NULL AND s.party_type IN ('supplier', 'both')
-               ORDER BY s.company_name ASC`;
+    query += ` WHERE s.status = 'active' AND s.deleted_at IS NULL AND s.party_type IN ('supplier', 'both')`;
+
+    const companyFilter = companyScope.filterSql('s.company_id', companyScope.parseFilter(companyId), { includeShared: true });
+    query += companyFilter.sql + ' ORDER BY s.company_name ASC';
+    params.push(...companyFilter.params);
 
     const [rows] = await pool.query(query, params);
     return rows.map((r) => ({ id: r.id, text: r.company_name }));

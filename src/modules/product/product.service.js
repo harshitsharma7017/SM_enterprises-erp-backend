@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { productRepository } from './product.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 const SCHEMES = ['drawback', 'rosctl', 'rodtep'];
 const TWO_PERCENT_SCHEMES = ['rosctl'];
@@ -49,6 +50,7 @@ export const productService = {
       await connection.beginTransaction();
 
       const payload = {
+        company_id: Number(data.company_id),
         category_id: data.category_id,
         item_group_code: data.item_group_code,
         name: data.name,
@@ -99,7 +101,13 @@ export const productService = {
         throw { status: 404, message: 'Product not found' };
       }
 
+      if (Number(data.company_id) !== existing.company_id) {
+        await companyScope.assertChangedOwnerActive(existing.company_id, Number(data.company_id), connection);
+        await companyScope.assertMasterReassignable('products', id, Number(data.company_id), 'product', connection);
+      }
+
       const payload = {
+        company_id: Number(data.company_id),
         category_id: data.category_id,
         item_group_code: data.item_group_code,
         name: data.name,

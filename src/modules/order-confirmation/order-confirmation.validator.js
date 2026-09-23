@@ -27,6 +27,8 @@ const itemSchema = Joi.object({
 });
 
 const storeSchema = Joi.object({
+  // Required by the service on create unless inherited from the source inquiry.
+  company_id: Joi.number().integer().positive().allow(null, ''),
   mode: Joi.string().valid('oc', 'direct').default('oc'),
   oc_date: Joi.date().iso().required(),
   buyer_ref: Joi.string().max(255).allow('', null),

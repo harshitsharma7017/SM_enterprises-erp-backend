@@ -7,6 +7,7 @@ export const exportDocumentController = {
       const filters = {
         status: req.query.status,
         buyer_id: req.query.buyer_id,
+        company_id: req.query.company_id,
         page: req.query.page,
         limit: req.query.limit
       };

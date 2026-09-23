@@ -7,6 +7,7 @@ export const buyerController = {
         search: req.query.search,
         status: req.query.status,
         category_id: req.query.category_id,
+        company_id: req.query.company_id,
         sort: req.query.sort,
         direction: req.query.direction,
         page: req.query.page || 1,

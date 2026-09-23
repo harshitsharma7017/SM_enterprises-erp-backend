@@ -8,6 +8,7 @@ export const supplierController = {
         status: req.query.status,
         party_type: req.query.party_type || 'supplier',
         category_id: req.query.category_id,
+        company_id: req.query.company_id,
         sort: req.query.sort,
         direction: req.query.direction,
         page: req.query.page || 1,

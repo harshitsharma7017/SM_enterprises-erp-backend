@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { purchaseOrderRepository } from './purchase-order.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 import { numberSeriesService } from '../../services/number-series.service.js';
 
 const financialYearFor = (date = new Date()) => {
@@ -35,8 +36,23 @@ export const purchaseOrderService = {
       const number = await numberSeriesService.nextNumber(connection, 'po', financialYear);
       const po_num = `GT/PO/${number}/${financialYear}`;
       
+      // Company is inherited from the order confirmation, never taken from the request.
+      const [ocRows] = await connection.query(
+        'SELECT company_id FROM order_confirmations WHERE id = ? AND deleted_at IS NULL',
+        [data.order_confirmation_id]
+      );
+      if (ocRows.length === 0) {
+        throw companyScope.error('Order Confirmation not found.');
+      }
+      const companyId = ocRows[0].company_id;
+      await companyScope.assertLinks(companyId, {
+        supplierIds: [data.supplier_id],
+        productIds: (data.items || []).map((item) => item && item.product_id),
+      }, connection);
+
       const payload = {
         ...data,
+        company_id: companyId,
         po_num,
         financial_year: financialYear,
         created_by: userId,
@@ -68,6 +84,12 @@ export const purchaseOrderService = {
     try {
       connection = await pool.getConnection();
       await connection.beginTransaction();
+
+      // Company (inherited from the OC) is not editable; only item products are checked.
+      const [poRows] = await connection.query('SELECT company_id FROM purchase_orders WHERE id = ?', [id]);
+      await companyScope.assertLinks(poRows.length ? poRows[0].company_id : null, {
+        productIds: (data.items || []).map((item) => item && item.product_id),
+      }, connection);
 
       const payload = {
         ...data,

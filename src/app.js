@@ -34,6 +34,7 @@ import reportRoutes from './modules/report/report.routes.js';
 import companyProfileRoutes from './modules/company-profile/company-profile.routes.js';
 import userRoutes from './modules/user-management/user.routes.js';
 import roleRoutes from './modules/user-management/role.routes.js';
+import companyRoutes from './modules/company/company.routes.js';
 
 const app = express();
 
@@ -79,6 +80,7 @@ app.use('/api/reports', reportRoutes);
 app.use('/api/user-management/company-profile', companyProfileRoutes);
 app.use('/api/user-management/users', userRoutes);
 app.use('/api/user-management', roleRoutes);
+app.use('/api/administration/companies', companyRoutes);
 
 // Centralized error handling
 app.use(errorHandler);

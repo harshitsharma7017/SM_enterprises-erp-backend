@@ -58,10 +58,11 @@ export const inwardEntryService = {
 
       const [headerResult] = await connection.query(`
         INSERT INTO inward_entries (
-          inward_no, financial_year, inward_date, purchase_order_id, supplier_id,
+          company_id, inward_no, financial_year, inward_date, purchase_order_id, supplier_id,
           challan_no, challan_date, remarks, status, created_by, updated_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW(), NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?, NOW(), NOW())
       `, [
+        po.company_id, // inherited from the purchase order
         inwardNo,
         financialYear,
         data.inward_date,

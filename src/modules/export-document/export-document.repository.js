@@ -1,4 +1,5 @@
 import { pool } from '../../config/database.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 export const exportDocumentRepository = {
   findAll: async (filters = {}) => {
@@ -7,12 +8,14 @@ export const exportDocumentRepository = {
         oc.oc_num as order_confirmation_num,
         b.company_name as buyer_name,
         c.iso_code as currency_code,
-        u1.name as creator_name
+        u1.name as creator_name,
+        cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
       FROM export_documents ed
       LEFT JOIN order_confirmations oc ON oc.id = ed.order_confirmation_id
       LEFT JOIN buyers b ON b.id = ed.buyer_id
       LEFT JOIN currencies c ON c.id = ed.currency_id
       LEFT JOIN users u1 ON u1.id = ed.created_by
+      LEFT JOIN companies cmp ON cmp.id = ed.company_id
       WHERE ed.deleted_at IS NULL
     `;
     const params = [];
@@ -26,6 +29,10 @@ export const exportDocumentRepository = {
       query += ` AND ed.buyer_id = ?`;
       params.push(filters.buyer_id);
     }
+
+    const companyFilter = companyScope.filterSql('ed.company_id', companyScope.parseFilter(filters.company_id));
+    query += companyFilter.sql;
+    params.push(...companyFilter.params);
 
     query += ` ORDER BY ed.id DESC`;
 
@@ -52,8 +59,10 @@ export const exportDocumentRepository = {
         i.name as incoterm_name,
         pol.name as port_of_loading_name,
         pod.name as port_of_discharge_name,
-        sm.name as shipment_method_name
+        sm.name as shipment_method_name,
+        cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
       FROM export_documents ed
+      LEFT JOIN companies cmp ON cmp.id = ed.company_id
       LEFT JOIN order_confirmations oc ON oc.id = ed.order_confirmation_id
       LEFT JOIN buyers b ON b.id = ed.buyer_id
       LEFT JOIN currencies c ON c.id = ed.currency_id

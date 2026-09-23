@@ -1,31 +1,39 @@
 import { pool } from '../../config/database.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 export const orderConfirmationRepository = {
   findAll: async (filters = {}) => {
-    let sql = `
-      SELECT oc.*,
-             b.company_name as buyer_company_name, b.display_code as buyer_display_code,
-             c.name as category_name
-      FROM order_confirmations oc
-      LEFT JOIN buyers b ON oc.buyer_id = b.id
-      LEFT JOIN categories c ON oc.category_id = c.id
-      WHERE oc.deleted_at IS NULL
-    `;
+    // Shared WHERE clause so the total below counts the same filtered set.
+    let where = ' WHERE oc.deleted_at IS NULL';
     const params = [];
 
     if (filters.buyer_id) {
-      sql += ' AND oc.buyer_id = ?';
+      where += ' AND oc.buyer_id = ?';
       params.push(filters.buyer_id);
     }
     if (filters.status) {
-      sql += ' AND oc.status = ?';
+      where += ' AND oc.status = ?';
       params.push(filters.status);
     }
     if (filters.search) {
       const term = `%${filters.search}%`;
-      sql += ` AND (oc.oc_num LIKE ? OR oc.buyer_ref LIKE ? OR oc.remarks LIKE ? OR b.company_name LIKE ? OR b.display_code LIKE ?)`;
+      where += ` AND (oc.oc_num LIKE ? OR oc.buyer_ref LIKE ? OR oc.remarks LIKE ? OR b.company_name LIKE ? OR b.display_code LIKE ?)`;
       params.push(term, term, term, term, term);
     }
+    const companyFilter = companyScope.filterSql('oc.company_id', companyScope.parseFilter(filters.company_id));
+    where += companyFilter.sql;
+    params.push(...companyFilter.params);
+
+    let sql = `
+      SELECT oc.*,
+             b.company_name as buyer_company_name, b.display_code as buyer_display_code,
+             c.name as category_name,
+             cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
+      FROM order_confirmations oc
+      LEFT JOIN buyers b ON oc.buyer_id = b.id
+      LEFT JOIN categories c ON oc.category_id = c.id
+      LEFT JOIN companies cmp ON cmp.id = oc.company_id
+    ` + where;
 
     const sortCol = ['id', 'oc_num', 'oc_date', 'status', 'created_at'].includes(filters.sort) ? filters.sort : 'created_at';
     const direction = String(filters.direction).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
@@ -39,12 +47,11 @@ export const orderConfirmationRepository = {
 
     const [rows] = await pool.query(sql, params);
     
-    let countSql = `
+    const countSql = `
       SELECT COUNT(*) as total 
       FROM order_confirmations oc
       LEFT JOIN buyers b ON oc.buyer_id = b.id
-      WHERE oc.deleted_at IS NULL
-    `;
+    ` + where;
     const countParams = [...params];
     if (filters.limit) {
       countParams.splice(-2, 2); // remove limit and offset
@@ -56,8 +63,9 @@ export const orderConfirmationRepository = {
 
   findById: async (id) => {
     const [rows] = await pool.query(`
-      SELECT oc.*
+      SELECT oc.*, cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
       FROM order_confirmations oc
+      LEFT JOIN companies cmp ON cmp.id = oc.company_id
       WHERE oc.id = ? AND oc.deleted_at IS NULL
     `, [id]);
     
@@ -98,13 +106,13 @@ export const orderConfirmationRepository = {
     
     const [result] = await connection.query(`
       INSERT INTO order_confirmations (
-        oc_num, financial_year, mode, oc_date, buyer_ref, source_inquiry_id, buyer_id, category_id,
+        company_id, oc_num, financial_year, mode, oc_date, buyer_ref, source_inquiry_id, buyer_id, category_id,
         document_format_id, agent_id, agent_commission_type, agent_commission_value, currency_id,
         incoterm, ship_method, shipment_date, pol, pod, payment_terms, delivery_details, packing_details,
         remarks, status, created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      header.oc_num, header.financial_year, header.mode || 'oc', header.oc_date, header.buyer_ref || null,
+      header.company_id ?? null, header.oc_num, header.financial_year, header.mode || 'oc', header.oc_date, header.buyer_ref || null,
       header.source_inquiry_id || null, header.buyer_id, header.category_id, header.document_format_id,
       header.agent_id || null, header.agent_commission_type || null, header.agent_commission_value || null,
       header.currency_id, header.incoterm || null, header.ship_method || null, header.shipment_date || null,
@@ -121,14 +129,14 @@ export const orderConfirmationRepository = {
     
     await connection.query(`
       UPDATE order_confirmations SET
-        mode = ?, oc_date = ?, buyer_ref = ?, buyer_id = ?, category_id = ?,
+        company_id = ?, mode = ?, oc_date = ?, buyer_ref = ?, buyer_id = ?, category_id = ?,
         document_format_id = ?, agent_id = ?, agent_commission_type = ?, agent_commission_value = ?,
         currency_id = ?, incoterm = ?, ship_method = ?, shipment_date = ?, pol = ?, pod = ?,
         payment_terms = ?, delivery_details = ?, packing_details = ?, remarks = ?, status = ?,
         updated_by = ?, updated_at = ?
       WHERE id = ? AND deleted_at IS NULL
     `, [
-      data.mode || 'oc', data.oc_date, data.buyer_ref || null, data.buyer_id, data.category_id,
+      data.company_id ?? null, data.mode || 'oc', data.oc_date, data.buyer_ref || null, data.buyer_id, data.category_id,
       data.document_format_id, data.agent_id || null, data.agent_commission_type || null, data.agent_commission_value || null,
       data.currency_id, data.incoterm || null, data.ship_method || null, data.shipment_date || null,
       data.pol || null, data.pod || null, data.payment_terms || null, data.delivery_details || null,

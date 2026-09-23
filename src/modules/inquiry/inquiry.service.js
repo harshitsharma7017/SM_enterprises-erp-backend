@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { inquiryRepository } from './inquiry.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 import { numberSeriesService } from '../../services/number-series.service.js';
 import { orderFormatRepository } from '../order-format/order-format.repository.js';
 
@@ -24,7 +25,7 @@ export const inquiryService = {
 
   findAll: async (filters) => {
     const result = await inquiryRepository.findAll(filters);
-    const stats = await inquiryRepository.getStatusStats();
+    const stats = await inquiryRepository.getStatusStats(filters.company_id);
     return { ...result, stats };
   },
 
@@ -98,8 +99,12 @@ export const inquiryService = {
       await inquiryService.ensureNumberSeries(connection, financialYear);
       const inquiryNo = await numberSeriesService.next(connection, 'inquiry', financialYear);
 
+      const companyId = await companyScope.assertActiveCompany(data.company_id, connection);
+      await inquiryService.assertCompanyLinks(connection, companyId, data);
+
       const payload = {
         ...inquiryService.headerPayload(data),
+        company_id: companyId,
         inquiry_no: inquiryNo,
         financial_year: financialYear,
         created_by: userId,
@@ -133,7 +138,15 @@ export const inquiryService = {
         throw { status: 404, message: 'Inquiry not found' };
       }
 
-      const payload = { ...inquiryService.headerPayload(data), updated_by: userId };
+      // Company is assigned once (legacy rows may still be unassigned) and never changed.
+      const companyId = await companyScope.resolveOwnership(existing.company_id, data.company_id, connection);
+      if (existing.company_id === null && companyId !== null) {
+        const [ocs] = await connection.query('SELECT id FROM order_confirmations WHERE source_inquiry_id = ?', [id]);
+        await companyScope.assertCompatible('order_confirmations', ocs.map((o) => o.id), companyId, 'An order confirmation raised from this inquiry', connection);
+      }
+      await inquiryService.assertCompanyLinks(connection, companyId, data);
+
+      const payload = { ...inquiryService.headerPayload(data), company_id: companyId, updated_by: userId };
 
       await inquiryRepository.update(connection, id, payload);
 
@@ -316,12 +329,22 @@ export const inquiryService = {
     return formats;
   },
 
-  products: async (categoryId) => {
-    return await inquiryRepository.getProductsForCascade(categoryId);
+  products: async (categoryId, companyId) => {
+    return await inquiryRepository.getProductsForCascade(categoryId, companyId);
   },
 
-  suppliers: async (categoryId) => {
-    return await inquiryRepository.getSuppliersForCascade(categoryId);
+  suppliers: async (categoryId, companyId) => {
+    return await inquiryRepository.getSuppliersForCascade(categoryId, companyId);
+  },
+
+  /** Buyer and item products/suppliers may not belong to a different company. */
+  assertCompanyLinks: async (connection, companyId, data) => {
+    const items = data.items || [];
+    await companyScope.assertLinks(companyId, {
+      buyerIds: [data.buyer_id],
+      productIds: items.map((item) => item && item.product_id),
+      supplierIds: items.map((item) => item && item.supplier_id),
+    }, connection);
   },
 
   /**

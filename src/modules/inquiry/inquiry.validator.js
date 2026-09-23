@@ -1,4 +1,5 @@
 import { inquiryRepository } from './inquiry.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 import { STATUSES } from './inquiry.service.js';
 
 const isBlank = (v) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
@@ -56,6 +57,11 @@ const validateCommon = async (req, isUpdate = false) => {
     errors.push('Mode is required and must be either draft or submit.');
   }
   const requiredUnlessDraft = mode !== 'draft';
+
+  // company_id — required on create; on update a legacy (unassigned)
+  // inquiry may be assigned once, and an assigned one keeps its company.
+  const companyError = await companyScope.checkField(body.company_id, { required: !isUpdate, mustBeActive: !isUpdate });
+  if (companyError) errors.push(companyError);
 
   // inquiry_date
   if (isBlank(body.inquiry_date)) {

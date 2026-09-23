@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { supplierRepository } from './supplier.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 const isBlank = (v) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
 
@@ -70,6 +71,8 @@ export const supplierService = {
    * no such columns on `suppliers`.
    */
   buildPayload: (data) => ({
+    // Blank company = shared by both companies.
+    company_id: isBlank(data.company_id) ? null : Number(data.company_id),
     display_code: data.display_code,
     party_type: data.party_type,
     company_name: data.company_name,
@@ -99,6 +102,12 @@ export const supplierService = {
     remarks: data.remarks || null
   }),
 
+  /** Linked products/buyers may not belong to a different company than the supplier. */
+  assertLinksMatchCompany: async (connection, companyId, data) => {
+    await companyScope.assertCompatible('products', data.product_ids, companyId, 'A linked product', connection);
+    await companyScope.assertCompatible('buyers', data.buyer_ids, companyId, 'A linked buyer', connection);
+  },
+
   /**
    * `defaultPartyType` replicates JobberController::store()'s defensive
    * fallback ("if empty($data['party_type'])... = 'jobber'") — in practice
@@ -118,6 +127,8 @@ export const supplierService = {
         created_by: userId,
         updated_by: userId
       };
+
+      await supplierService.assertLinksMatchCompany(connection, payload.company_id, data);
 
       const supplierId = await supplierRepository.create(connection, payload);
 
@@ -152,6 +163,15 @@ export const supplierService = {
         ...supplierService.buildPayload(data),
         updated_by: userId
       };
+
+      // A client that does not send company_id (e.g. an older screen) keeps the current owner.
+      if (data.company_id === undefined) payload.company_id = existing.company_id;
+
+      if (payload.company_id !== existing.company_id) {
+        await companyScope.assertChangedOwnerActive(existing.company_id, payload.company_id, connection);
+        await companyScope.assertMasterReassignable('suppliers', id, payload.company_id, 'supplier', connection);
+      }
+      await supplierService.assertLinksMatchCompany(connection, payload.company_id, data);
 
       await supplierRepository.update(connection, id, payload);
 

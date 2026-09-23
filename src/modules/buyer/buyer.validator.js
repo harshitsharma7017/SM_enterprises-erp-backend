@@ -1,4 +1,5 @@
 import { buyerRepository } from './buyer.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 const isBlank = (v) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
 const isInteger = (v) => Number.isInteger(Number(v)) && String(v).trim() !== '';
@@ -6,9 +7,13 @@ const isNumeric = (v) => v !== '' && v !== null && !Number.isNaN(Number(v));
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]Z[0-9A-Z]$/;
 
-const validateCommon = async (req) => {
+const validateCommon = async (req, isUpdate = false) => {
   const body = req.body || {};
   const errors = [];
+
+  // company_id — optional; blank means shared by both companies
+  const companyError = await companyScope.checkField(body.company_id, { required: false, mustBeActive: !isUpdate });
+  if (companyError) errors.push(companyError);
 
   // company_name — required, no uniqueness rule (Laravel has none either).
   if (isBlank(body.company_name) || typeof body.company_name !== 'string') {
@@ -320,7 +325,7 @@ export const buyerValidator = {
 
   validateUpdate: async (req, res, next) => {
     try {
-      const errors = await validateCommon(req);
+      const errors = await validateCommon(req, true);
       if (errors.length > 0) {
         return res.status(400).json({ success: false, message: 'Validation failed', errors });
       }

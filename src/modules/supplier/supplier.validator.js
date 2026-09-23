@@ -1,5 +1,6 @@
 import { supplierRepository } from './supplier.repository.js';
 import { AGENT_SIDES } from './supplier.service.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 const isBlank = (v) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
 const isInteger = (v) => Number.isInteger(Number(v)) && String(v).trim() !== '';
@@ -84,6 +85,10 @@ const validateCommon = async (req, isUpdate = false) => {
     const exists = await supplierRepository.displayCodeExists(displayCode, ignoreId);
     if (exists) errors.push('This display code is already used by another supplier.');
   }
+
+  // company_id — optional; blank means shared by both companies
+  const companyError = await companyScope.checkField(body.company_id, { required: false, mustBeActive: !isUpdate });
+  if (companyError) errors.push(companyError);
 
   // party_type
   if (!body.party_type || !PARTY_TYPES.includes(body.party_type)) {

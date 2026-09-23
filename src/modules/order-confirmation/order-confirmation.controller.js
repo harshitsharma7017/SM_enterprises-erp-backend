@@ -4,11 +4,11 @@ import { orderConfirmationRepository } from './order-confirmation.repository.js'
 export const orderConfirmationController = {
   index: async (req, res, next) => {
     try {
-      const { search, limit = 15, page = 1, sort, direction, buyer_id, status } = req.query;
+      const { search, limit = 15, page = 1, sort, direction, buyer_id, status, company_id } = req.query;
       const offset = (page - 1) * limit;
 
       const { rows, total } = await orderConfirmationRepository.findAll({
-        search, limit, offset, sort, direction, buyer_id, status
+        search, limit, offset, sort, direction, buyer_id, status, company_id
       });
 
       res.json({

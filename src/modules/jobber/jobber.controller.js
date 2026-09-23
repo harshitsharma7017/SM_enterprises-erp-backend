@@ -14,6 +14,7 @@ export const jobberController = {
         // with no query override, unlike the Supplier screen.
         party_type: 'jobber',
         category_id: req.query.category_id,
+        company_id: req.query.company_id,
         sort: req.query.sort,
         direction: req.query.direction,
         page: req.query.page || 1,

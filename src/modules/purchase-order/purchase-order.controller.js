@@ -4,11 +4,11 @@ import { purchaseOrderRepository } from './purchase-order.repository.js';
 export const purchaseOrderController = {
   index: async (req, res, next) => {
     try {
-      const { search, limit = 15, page = 1, sort, direction, supplier_id, status } = req.query;
+      const { search, limit = 15, page = 1, sort, direction, supplier_id, status, company_id } = req.query;
       const offset = (page - 1) * limit;
 
       const { rows, total } = await purchaseOrderRepository.findAll({
-        search, limit, offset, sort, direction, supplier_id, status
+        search, limit, offset, sort, direction, supplier_id, status, company_id
       });
 
       res.json({

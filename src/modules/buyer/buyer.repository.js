@@ -1,21 +1,30 @@
 import { pool } from '../../config/database.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 export const buyerRepository = {
-  findAll: async ({ search, status, category_id, sort, direction, page = 1, limit = 15 }) => {
+  findAll: async ({ search, status, category_id, company_id, sort, direction, page = 1, limit = 15 }) => {
     let query = `
       SELECT
         b.id, b.display_code, b.company_name, b.name_on_export_invoice, b.contact_person,
         b.email, b.mobile, b.status, b.created_at, b.updated_at,
+        b.company_id, cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
         co.name AS country_name, co.iso_code AS country_iso_code,
         a.name AS agent_name, a.display_code AS agent_display_code,
         (SELECT COUNT(*) FROM buyer_category bc WHERE bc.buyer_id = b.id) AS categories_count
       FROM buyers b
       LEFT JOIN countries co ON co.id = b.country_id
       LEFT JOIN agents a ON a.id = b.agent_id
+      LEFT JOIN companies cmp ON cmp.id = b.company_id
       WHERE b.deleted_at IS NULL
     `;
 
     const params = [];
+
+    // A company filter also returns shared (company_id NULL) buyers,
+    // since those are usable by every company.
+    const companyFilter = companyScope.filterSql('b.company_id', companyScope.parseFilter(company_id), { includeShared: true });
+    query += companyFilter.sql;
+    params.push(...companyFilter.params);
 
     if (search) {
       query += ` AND (
@@ -94,7 +103,8 @@ export const buyerRepository = {
         cur.iso_code AS currency_iso_code, cur.name AS currency_name,
         sm.name AS shipment_method_name,
         u1.name AS creator_name,
-        u2.name AS updater_name
+        u2.name AS updater_name,
+        cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label
       FROM buyers b
       LEFT JOIN countries co ON co.id = b.country_id
       LEFT JOIN ports p ON p.id = b.port_id
@@ -105,6 +115,7 @@ export const buyerRepository = {
       LEFT JOIN shipment_methods sm ON sm.id = b.shipment_method_id
       LEFT JOIN users u1 ON u1.id = b.created_by
       LEFT JOIN users u2 ON u2.id = b.updated_by
+      LEFT JOIN companies cmp ON cmp.id = b.company_id
       WHERE b.id = ? AND b.deleted_at IS NULL`,
       [id]
     );
@@ -114,14 +125,14 @@ export const buyerRepository = {
   create: async (connection, data) => {
     const [result] = await connection.query(
       `INSERT INTO buyers (
-        display_code, company_name, name_on_export_invoice, contact_person, email, mobile,
+        company_id, display_code, company_name, name_on_export_invoice, contact_person, email, mobile,
         gst_vat_no, address, country_id, pincode, port_id, agent_id,
         agent_commission_type, agent_commission_value, payment_term_id, incoterm_id, currency_id,
         shipment_method_id, bank_name, account_number, swift_code, status, remarks,
         created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
-        data.display_code, data.company_name, data.name_on_export_invoice, data.contact_person, data.email, data.mobile,
+        data.company_id, data.display_code, data.company_name, data.name_on_export_invoice, data.contact_person, data.email, data.mobile,
         data.gst_vat_no, data.address, data.country_id, data.pincode, data.port_id, data.agent_id,
         data.agent_commission_type, data.agent_commission_value, data.payment_term_id, data.incoterm_id, data.currency_id,
         data.shipment_method_id, data.bank_name, data.account_number, data.swift_code, data.status, data.remarks,
@@ -134,14 +145,14 @@ export const buyerRepository = {
   update: async (connection, id, data) => {
     await connection.query(
       `UPDATE buyers SET
-        company_name = ?, name_on_export_invoice = ?, contact_person = ?, email = ?, mobile = ?,
+        company_id = ?, company_name = ?, name_on_export_invoice = ?, contact_person = ?, email = ?, mobile = ?,
         gst_vat_no = ?, address = ?, country_id = ?, pincode = ?, port_id = ?, agent_id = ?,
         agent_commission_type = ?, agent_commission_value = ?, payment_term_id = ?, incoterm_id = ?, currency_id = ?,
         shipment_method_id = ?, bank_name = ?, account_number = ?, swift_code = ?, status = ?, remarks = ?,
         updated_by = ?, updated_at = NOW()
       WHERE id = ? AND deleted_at IS NULL`,
       [
-        data.company_name, data.name_on_export_invoice, data.contact_person, data.email, data.mobile,
+        data.company_id, data.company_name, data.name_on_export_invoice, data.contact_person, data.email, data.mobile,
         data.gst_vat_no, data.address, data.country_id, data.pincode, data.port_id, data.agent_id,
         data.agent_commission_type, data.agent_commission_value, data.payment_term_id, data.incoterm_id, data.currency_id,
         data.shipment_method_id, data.bank_name, data.account_number, data.swift_code, data.status, data.remarks,

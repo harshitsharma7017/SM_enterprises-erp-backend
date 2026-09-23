@@ -4,6 +4,7 @@ import { purchaseOrderRepository } from '../purchase-order/purchase-order.reposi
 import { numberSeriesService } from '../../services/number-series.service.js';
 import { inquiryRepository } from '../inquiry/inquiry.repository.js';
 import { buyerRepository } from '../buyer/buyer.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 const financialYearFor = (date = new Date()) => {
   const month = date.getMonth() + 1;
@@ -44,9 +45,24 @@ export const orderConfirmationService = {
       }
       
       const oc_num = `GT/${buyerCode}/${number}/${financialYear}`;
-      
+
+      // Company comes from the source inquiry when there is one, else from the form.
+      let companyId = null;
+      if (data.source_inquiry_id) {
+        const inquiry = await inquiryRepository.findById(data.source_inquiry_id);
+        companyId = inquiry ? inquiry.company_id : null;
+        if (companyId !== null && data.company_id && Number(data.company_id) !== companyId) {
+          throw companyScope.error('Company must match the source inquiry.');
+        }
+      }
+      if (companyId === null) {
+        companyId = await companyScope.assertActiveCompany(data.company_id, connection);
+      }
+      await orderConfirmationService.assertCompanyLinks(connection, companyId, data);
+
       const payload = {
         ...data,
+        company_id: companyId,
         oc_num,
         financial_year: financialYear,
         created_by: userId,
@@ -75,8 +91,23 @@ export const orderConfirmationService = {
       connection = await pool.getConnection();
       await connection.beginTransaction();
 
+      const existing = await orderConfirmationRepository.findById(id);
+      if (!existing) {
+        const err = new Error('Order Confirmation not found');
+        err.status = 404;
+        throw err;
+      }
+
+      // Company is assigned once (legacy rows may still be unassigned) and never changed.
+      const companyId = await companyScope.resolveOwnership(existing.company_id, data.company_id, connection);
+      await orderConfirmationService.assertCompanyLinks(connection, companyId, data);
+      if (existing.company_id === null && companyId !== null) {
+        await orderConfirmationService.assignLegacyChain(connection, existing, companyId);
+      }
+
       const payload = {
         ...data,
+        company_id: companyId,
         updated_by: userId
       };
 
@@ -111,6 +142,41 @@ export const orderConfirmationService = {
     } finally {
       if (connection) connection.release();
     }
+  },
+
+  /** Buyer and item products/suppliers may not belong to a different company. */
+  assertCompanyLinks: async (connection, companyId, data) => {
+    const items = data.items || [];
+    await companyScope.assertLinks(companyId, {
+      buyerIds: [data.buyer_id],
+      productIds: items.map((item) => item && item.product_id),
+      supplierIds: items.map((item) => item && item.supplier_id),
+    }, connection);
+  },
+
+  /**
+   * First-time company assignment on a legacy OC: the source inquiry must not
+   * belong to another company, and the OC's still-unassigned downstream
+   * records (POs, their inward entries, export documents) inherit the same
+   * company — deterministic, because they can only have come from this OC.
+   */
+  assignLegacyChain: async (connection, oc, companyId) => {
+    if (oc.source_inquiry_id) {
+      await companyScope.assertCompatible('inquiries', [oc.source_inquiry_id], companyId, 'The source inquiry', connection);
+    }
+
+    const [pos] = await connection.query('SELECT id, supplier_id FROM purchase_orders WHERE order_confirmation_id = ?', [oc.id]);
+    const poIds = pos.map((p) => p.id);
+    await companyScope.assertCompatible('purchase_orders', poIds, companyId, 'A purchase order raised from this OC', connection);
+    await companyScope.assertCompatible('suppliers', pos.map((p) => p.supplier_id), companyId, "A purchase order's supplier", connection);
+    const [eds] = await connection.query('SELECT id FROM export_documents WHERE order_confirmation_id = ?', [oc.id]);
+    await companyScope.assertCompatible('export_documents', eds.map((e) => e.id), companyId, 'An export document raised from this OC', connection);
+
+    if (poIds.length > 0) {
+      await connection.query('UPDATE purchase_orders SET company_id = ? WHERE id IN (?) AND company_id IS NULL', [companyId, poIds]);
+      await connection.query('UPDATE inward_entries SET company_id = ? WHERE purchase_order_id IN (?) AND company_id IS NULL', [companyId, poIds]);
+    }
+    await connection.query('UPDATE export_documents SET company_id = ? WHERE order_confirmation_id = ? AND company_id IS NULL', [companyId, oc.id]);
   },
 
   convertFromInquiry: async (inquiryId, userId) => {
@@ -153,6 +219,8 @@ export const orderConfirmationService = {
         oc_date: today,
         buyer_ref: inquiry.buyer_ref,
         source_inquiry_id: inquiry.id,
+        // Inherited; NULL only when converting a legacy, unassigned inquiry.
+        company_id: inquiry.company_id,
         buyer_id: inquiry.buyer_id,
         category_id: inquiry.category_id,
         document_format_id: inquiry.document_format_id,
@@ -257,6 +325,7 @@ export const orderConfirmationService = {
           po_num,
           financial_year: financialYear,
           order_confirmation_id: oc.id,
+          company_id: oc.company_id,
           supplier_id: supplierId,
           po_date: today,
           delivery_details: oc.delivery_details,

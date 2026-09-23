@@ -117,7 +117,11 @@
     "permission.view",
     "permission.sync",
     "company-profile.view",
-    "company-profile.edit"
+    "company-profile.edit",
+    "company.view",
+    "company.create",
+    "company.edit",
+    "company.delete"
   ],
   "mappings": {
     "Super Admin": [
@@ -228,7 +232,11 @@
       "permission.view",
       "permission.sync",
       "company-profile.view",
-      "company-profile.edit"
+      "company-profile.edit",
+      "company.view",
+      "company.create",
+      "company.edit",
+      "company.delete"
     ],
     "Admin": [
       "user.view",
@@ -238,6 +246,10 @@
       "role.view",
       "company-profile.view",
       "company-profile.edit",
+      "company.view",
+      "company.create",
+      "company.edit",
+      "company.delete",
       "category.view",
       "category.create",
       "category.edit",

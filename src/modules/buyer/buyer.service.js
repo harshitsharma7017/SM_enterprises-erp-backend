@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { buyerRepository } from './buyer.repository.js';
+import { companyScope } from '../../services/company-scope.service.js';
 import { numberSeriesService } from '../../services/number-series.service.js';
 
 const isBlank = (v) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
@@ -39,6 +40,8 @@ export const buyerService = {
    * never read — the locked schema cannot persist them.
    */
   buildPayload: (data) => ({
+    // Blank company = shared by both companies.
+    company_id: data.company_id === undefined || data.company_id === null || data.company_id === '' ? null : Number(data.company_id),
     company_name: data.company_name,
     name_on_export_invoice: data.name_on_export_invoice || null,
     contact_person: data.contact_person || null,
@@ -115,6 +118,14 @@ export const buyerService = {
         ...buyerService.buildPayload(data),
         updated_by: userId
       };
+
+      // A client that does not send company_id (e.g. an older screen) keeps the current owner.
+      if (data.company_id === undefined) payload.company_id = existing.company_id;
+
+      if (payload.company_id !== existing.company_id) {
+        await companyScope.assertChangedOwnerActive(existing.company_id, payload.company_id, connection);
+        await companyScope.assertMasterReassignable('buyers', id, payload.company_id, 'buyer', connection);
+      }
 
       await buyerRepository.update(connection, id, payload);
 

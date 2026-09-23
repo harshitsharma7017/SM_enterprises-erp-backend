@@ -7,6 +7,7 @@ export const inwardEntryController = {
       const filters = {
         status: req.query.status,
         purchase_order_id: req.query.purchase_order_id,
+        company_id: req.query.company_id,
         page: req.query.page,
         limit: req.query.limit
       };

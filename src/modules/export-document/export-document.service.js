@@ -1,4 +1,5 @@
 import { pool } from '../../config/database.js';
+import { companyScope } from '../../services/company-scope.service.js';
 import { exportDocumentRepository } from './export-document.repository.js';
 import { orderConfirmationRepository } from '../order-confirmation/order-confirmation.repository.js';
 
@@ -58,11 +59,12 @@ export const exportDocumentService = {
 
       const [headerResult] = await connection.query(`
         INSERT INTO export_documents (
-          doc_num, financial_year, order_confirmation_id, buyer_id, currency_id,
+          company_id, doc_num, financial_year, order_confirmation_id, buyer_id, currency_id,
           incoterm_id, port_of_loading_id, port_of_discharge_id, shipment_method_id,
           status, created_by, updated_by, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, NOW(), NOW())
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', ?, ?, NOW(), NOW())
       `, [
+        oc.company_id, // inherited from the order confirmation
         docNum,
         financialYear,
         oc.id,
@@ -157,6 +159,9 @@ export const exportDocumentService = {
       if (existing.status === 'closed') {
         throw new Error('Cannot update a closed Export Document.');
       }
+
+      // Company is inherited from the OC; a changed buyer must not belong to another company.
+      await companyScope.assertLinks(existing.company_id, { buyerIds: [data.buyer_id] }, connection);
 
       await connection.query(`
         UPDATE export_documents SET

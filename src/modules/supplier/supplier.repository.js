@@ -1,11 +1,13 @@
 import { pool } from '../../config/database.js';
+import { companyScope } from '../../services/company-scope.service.js';
 
 export const supplierRepository = {
-  findAll: async ({ search, status, party_type, category_id, sort, direction, page = 1, limit = 15 }) => {
+  findAll: async ({ search, status, party_type, category_id, company_id, sort, direction, page = 1, limit = 15 }) => {
     let query = `
       SELECT
         s.id, s.display_code, s.party_type, s.company_name, s.name_on_bill,
         s.credit_days, s.status, s.created_at, s.updated_at,
+        s.company_id, cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
         ci.name AS city_name, st.name AS state_name,
         sty.name AS supplier_type_name,
         a.name AS agent_name, a.display_code AS agent_display_code,
@@ -18,10 +20,17 @@ export const supplierRepository = {
       LEFT JOIN states st ON st.id = s.state_id
       LEFT JOIN supplier_types sty ON sty.id = s.supplier_type_id
       LEFT JOIN agents a ON a.id = s.agent_id
+      LEFT JOIN companies cmp ON cmp.id = s.company_id
       WHERE s.deleted_at IS NULL
     `;
 
     const params = [];
+
+    // A company filter also returns shared (company_id NULL) suppliers,
+    // since those are usable by every company.
+    const companyFilter = companyScope.filterSql('s.company_id', companyScope.parseFilter(company_id), { includeShared: true });
+    query += companyFilter.sql;
+    params.push(...companyFilter.params);
 
     // ofParty(): blank/unrecognized party_type applies no filter; 'both'
     // matches only 'both'; supplier/jobber matches itself plus 'both'.
@@ -112,7 +121,8 @@ export const supplierRepository = {
         sty.name AS supplier_type_name, sty.is_registered AS supplier_type_is_registered,
         a.name AS agent_name, a.display_code AS agent_display_code,
         u1.name AS creator_name,
-        u2.name AS updater_name
+        u2.name AS updater_name,
+        cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label
       FROM suppliers s
       LEFT JOIN countries co ON co.id = s.country_id
       LEFT JOIN states st ON st.id = s.state_id
@@ -121,6 +131,7 @@ export const supplierRepository = {
       LEFT JOIN agents a ON a.id = s.agent_id
       LEFT JOIN users u1 ON u1.id = s.created_by
       LEFT JOIN users u2 ON u2.id = s.updated_by
+      LEFT JOIN companies cmp ON cmp.id = s.company_id
       WHERE s.id = ? AND s.deleted_at IS NULL`,
       [id]
     );
@@ -258,16 +269,16 @@ export const supplierRepository = {
   create: async (connection, data) => {
     const [result] = await connection.query(
       `INSERT INTO suppliers (
-        display_code, party_type, company_name, name_on_bill, supplier_type_id,
+        company_id, display_code, party_type, company_name, name_on_bill, supplier_type_id,
         gst_number, pan_number, is_msme, msme_registration_no,
         address, country_id, state_id, city_id, pincode,
         discount_percent, credit_days, bank_name, account_number, ifsc_code,
         agent_id, agent_commission_type, agent_commission_value,
         we_supply_material, requires_sample_approval, default_delivery_mode,
         status, remarks, created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
-        data.display_code, data.party_type, data.company_name, data.name_on_bill, data.supplier_type_id,
+        data.company_id, data.display_code, data.party_type, data.company_name, data.name_on_bill, data.supplier_type_id,
         data.gst_number, data.pan_number, data.is_msme ? 1 : 0, data.msme_registration_no,
         data.address, data.country_id, data.state_id, data.city_id, data.pincode,
         data.discount_percent, data.credit_days, data.bank_name, data.account_number, data.ifsc_code,
@@ -282,7 +293,7 @@ export const supplierRepository = {
   update: async (connection, id, data) => {
     await connection.query(
       `UPDATE suppliers SET
-        display_code = ?, party_type = ?, company_name = ?, name_on_bill = ?, supplier_type_id = ?,
+        company_id = ?, display_code = ?, party_type = ?, company_name = ?, name_on_bill = ?, supplier_type_id = ?,
         gst_number = ?, pan_number = ?, is_msme = ?, msme_registration_no = ?,
         address = ?, country_id = ?, state_id = ?, city_id = ?, pincode = ?,
         discount_percent = ?, credit_days = ?, bank_name = ?, account_number = ?, ifsc_code = ?,
@@ -291,7 +302,7 @@ export const supplierRepository = {
         status = ?, remarks = ?, updated_by = ?, updated_at = NOW()
       WHERE id = ? AND deleted_at IS NULL`,
       [
-        data.display_code, data.party_type, data.company_name, data.name_on_bill, data.supplier_type_id,
+        data.company_id, data.display_code, data.party_type, data.company_name, data.name_on_bill, data.supplier_type_id,
         data.gst_number, data.pan_number, data.is_msme ? 1 : 0, data.msme_registration_no,
         data.address, data.country_id, data.state_id, data.city_id, data.pincode,
         data.discount_percent, data.credit_days, data.bank_name, data.account_number, data.ifsc_code,
