@@ -21,6 +21,8 @@ const OWNED_TABLES = [
   { table: 'dispatches', label: 'dispatch' },
   { table: 'proforma_invoices', label: 'proforma invoice' },
   { table: 'invoices', label: 'invoice' },
+  { table: 'barcodes', label: 'barcode' },
+  { table: 'barcode_scans', label: 'barcode scan' },
   { table: 'export_documents', label: 'export document' },
 ];
 

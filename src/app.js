@@ -40,6 +40,7 @@ import invoiceRoutes from './modules/invoice/invoice.routes.js';
 import inventoryRoutes from './modules/inventory/inventory.routes.js';
 import productionRoutes from './modules/production/production.routes.js';
 import dispatchRoutes from './modules/dispatch/dispatch.routes.js';
+import barcodeRoutes from './modules/barcode/barcode.routes.js';
 import exportDocumentRoutes from './modules/export-document/export-document.routes.js';
 
 // Phase 21 & 22 Imports
@@ -98,6 +99,7 @@ app.use('/api/quality-control', qualityControlRoutes);
 app.use('/api/inventory', inventoryRoutes);
 app.use('/api/production', productionRoutes);
 app.use('/api/dispatches', dispatchRoutes);
+app.use('/api/barcodes', barcodeRoutes);
 app.use('/api/export/documents', exportDocumentRoutes);
 
 // Phase 21 & 22 Routes

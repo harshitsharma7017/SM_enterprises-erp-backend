@@ -181,6 +181,8 @@ export const lotRepository = {
       LEFT JOIN buyers b ON b.id = d.buyer_id
       WHERE di.lot_id = ? ORDER BY d.id`, [id]);
     lot.dispatches = dispatches;
+    const [barcodes] = await pool.query('SELECT id, barcode_value, status, created_at, retired_at FROM barcodes WHERE lot_id = ? ORDER BY id', [id]);
+    lot.barcodes = barcodes;
     return lot;
   },
 };
