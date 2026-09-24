@@ -35,6 +35,8 @@ import lotRoutes from './modules/lot/lot.routes.js';
 import qualityControlRoutes from './modules/quality-control/quality-control.routes.js';
 import supplierReturnRoutes from './modules/supplier-return/supplier-return.routes.js';
 import debitNoteRoutes from './modules/debit-note/debit-note.routes.js';
+import proformaInvoiceRoutes from './modules/proforma-invoice/proforma-invoice.routes.js';
+import invoiceRoutes from './modules/invoice/invoice.routes.js';
 import inventoryRoutes from './modules/inventory/inventory.routes.js';
 import productionRoutes from './modules/production/production.routes.js';
 import dispatchRoutes from './modules/dispatch/dispatch.routes.js';
@@ -101,6 +103,8 @@ app.use('/api/export/documents', exportDocumentRoutes);
 // Phase 21 & 22 Routes
 app.use('/api/export/packing', packingRoutes);
 app.use('/api/finance/debit-notes', debitNoteRoutes);
+app.use('/api/finance/proforma-invoices', proformaInvoiceRoutes);
+app.use('/api/finance/invoices', invoiceRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/user-management/company-profile', companyProfileRoutes);

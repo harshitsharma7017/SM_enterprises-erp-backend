@@ -196,6 +196,26 @@ export const orderConfirmationService = {
       LEFT JOIN order_confirmation_items oci ON oci.id = di.order_confirmation_item_id
       WHERE d.status <> 'cancelled' AND (d.order_confirmation_id = ? OR oci.order_confirmation_id = ?)`, [oc.id, oc.id]);
     if (dispatches > 0) throw companyScope.error(`${oc.oc_num} has ${dispatches} dispatch(es), so it cannot be ${action}.`);
+    const [[docs]] = await connection.query(`
+      SELECT (SELECT COUNT(*) FROM proforma_invoices WHERE order_confirmation_id = ? AND status <> 'cancelled') AS proformas,
+             (SELECT COUNT(*) FROM invoices WHERE order_confirmation_id = ? AND status <> 'cancelled') AS invoices`, [oc.id, oc.id]);
+    if (docs.proformas > 0 || docs.invoices > 0) {
+      throw companyScope.error(`${oc.oc_num} has ${docs.proformas} proforma invoice(s) and ${docs.invoices} invoice(s), so it cannot be ${action}.`);
+    }
+    // Editing re-creates the lines; lines kept as history by cancelled allocations,
+    // dispatches or commercial documents cannot be removed.
+    if (action === 'edited') {
+      const [[{ history }]] = await connection.query(`
+        SELECT COUNT(*) AS history FROM order_confirmation_items oci
+        WHERE oci.order_confirmation_id = ? AND (
+          EXISTS (SELECT 1 FROM order_item_production_allocations a WHERE a.order_confirmation_item_id = oci.id)
+          OR EXISTS (SELECT 1 FROM dispatch_items di WHERE di.order_confirmation_item_id = oci.id)
+          OR EXISTS (SELECT 1 FROM proforma_invoice_items pii WHERE pii.order_confirmation_item_id = oci.id)
+          OR EXISTS (SELECT 1 FROM invoice_items ii WHERE ii.order_confirmation_item_id = oci.id))`, [oc.id]);
+      if (history > 0) {
+        throw companyScope.error(`${oc.oc_num} has cancelled allocation, dispatch or proforma invoice history on ${history} line(s), so its lines can no longer be edited.`);
+      }
+    }
   },
 
   /**
@@ -219,10 +239,12 @@ export const orderConfirmationService = {
         SELECT (SELECT COUNT(*) FROM order_item_production_allocations WHERE order_confirmation_id = ? AND status = 'active') AS allocations,
                (SELECT COUNT(*) FROM purchase_orders WHERE order_confirmation_id = ? AND deleted_at IS NULL AND status <> 'cancelled') AS purchase_orders,
                (SELECT COUNT(*) FROM export_documents WHERE order_confirmation_id = ? AND deleted_at IS NULL) AS export_documents,
-               (SELECT COUNT(*) FROM dispatches WHERE order_confirmation_id = ? AND status <> 'cancelled') AS dispatches
-      `, [id, id, id, id]);
-      if (deps.allocations > 0 || deps.purchase_orders > 0 || deps.export_documents > 0 || deps.dispatches > 0) {
-        throw companyScope.error(`${oc.oc_num} cannot be cancelled: ${deps.allocations} production allocation(s), ${deps.purchase_orders} purchase order(s), ${deps.export_documents} export document(s) and ${deps.dispatches} dispatch(es) depend on it.`);
+               (SELECT COUNT(*) FROM dispatches WHERE order_confirmation_id = ? AND status <> 'cancelled') AS dispatches,
+               (SELECT COUNT(*) FROM proforma_invoices WHERE order_confirmation_id = ? AND status <> 'cancelled') AS proformas,
+               (SELECT COUNT(*) FROM invoices WHERE order_confirmation_id = ? AND status <> 'cancelled') AS invoices
+      `, [id, id, id, id, id, id]);
+      if (deps.allocations > 0 || deps.purchase_orders > 0 || deps.export_documents > 0 || deps.dispatches > 0 || deps.proformas > 0 || deps.invoices > 0) {
+        throw companyScope.error(`${oc.oc_num} cannot be cancelled: ${deps.allocations} production allocation(s), ${deps.purchase_orders} purchase order(s), ${deps.export_documents} export document(s), ${deps.dispatches} dispatch(es), ${deps.proformas} proforma invoice(s) and ${deps.invoices} invoice(s) depend on it.`);
       }
       await connection.query(
         "UPDATE order_confirmations SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = ?, cancellation_reason = ?, updated_by = ?, updated_at = NOW() WHERE id = ?",

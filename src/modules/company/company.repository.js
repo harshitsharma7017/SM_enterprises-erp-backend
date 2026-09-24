@@ -19,6 +19,8 @@ const OWNED_TABLES = [
   { table: 'processing_records', label: 'processing record' },
   { table: 'order_item_production_allocations', label: 'production allocation' },
   { table: 'dispatches', label: 'dispatch' },
+  { table: 'proforma_invoices', label: 'proforma invoice' },
+  { table: 'invoices', label: 'invoice' },
   { table: 'export_documents', label: 'export document' },
 ];
 
