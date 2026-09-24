@@ -97,6 +97,8 @@ export const orderConfirmationService = {
         err.status = 404;
         throw err;
       }
+      // Editing re-creates the items, so an order with production allocated to them is locked.
+      await orderConfirmationService.assertEditable(connection, existing);
 
       // Company is assigned once (legacy rows may still be unassigned) and never changed.
       const companyId = await companyScope.resolveOwnership(existing.company_id, data.company_id, connection);
@@ -133,6 +135,8 @@ export const orderConfirmationService = {
       connection = await pool.getConnection();
       await connection.beginTransaction();
 
+      const existing = await orderConfirmationRepository.findById(id);
+      if (existing) await orderConfirmationService.assertEditable(connection, existing, 'deleted');
       await orderConfirmationRepository.delete(connection, id);
 
       await connection.commit();
@@ -144,14 +148,87 @@ export const orderConfirmationService = {
     }
   },
 
-  /** Buyer and item products/suppliers may not belong to a different company. */
+  /**
+   * Buyer, brand and item products must exist, and buyer/products/suppliers
+   * may not belong to a different company. A brand is company-owned: it must
+   * belong to the order's company.
+   */
   assertCompanyLinks: async (connection, companyId, data) => {
     const items = data.items || [];
+    const [buyers] = await connection.query('SELECT id FROM buyers WHERE id = ?', [data.buyer_id]);
+    if (buyers.length === 0) throw companyScope.error('The selected buyer does not exist.');
+    const productIds = [...new Set(items.map((item) => item && item.product_id).filter(Boolean).map(Number))];
+    if (productIds.length > 0) {
+      const [found] = await connection.query('SELECT id FROM products WHERE id IN (?)', [productIds]);
+      if (found.length !== productIds.length) throw companyScope.error('A selected product does not exist.');
+    }
+    if (data.brand_id) {
+      const [[brand]] = await connection.query('SELECT id, name, company_id FROM brands WHERE id = ? AND deleted_at IS NULL', [data.brand_id]);
+      if (!brand) throw companyScope.error('The selected brand does not exist.');
+      if (companyId === null) throw companyScope.error('Assign a company before selecting a brand.');
+      if (brand.company_id !== companyId) throw companyScope.error(`Brand ${brand.name} belongs to a different company than this order.`);
+    }
     await companyScope.assertLinks(companyId, {
       buyerIds: [data.buyer_id],
-      productIds: items.map((item) => item && item.product_id),
+      productIds,
       supplierIds: items.map((item) => item && item.supplier_id),
     }, connection);
+  },
+
+  /**
+   * A cancelled order is read-only, and an order with active production
+   * allocations cannot be edited or deleted (editing re-creates its items)
+   * until the allocations are cancelled. Locks the order row.
+   */
+  assertEditable: async (connection, oc, action = 'edited') => {
+    const [[locked]] = await connection.query('SELECT status FROM order_confirmations WHERE id = ? FOR UPDATE', [oc.id]);
+    if (locked && locked.status === 'cancelled') throw companyScope.error(`A cancelled order cannot be ${action}.`);
+    const [[{ active }]] = await connection.query(
+      "SELECT COUNT(*) AS active FROM order_item_production_allocations WHERE order_confirmation_id = ? AND status = 'active'",
+      [oc.id]
+    );
+    if (active > 0) {
+      throw companyScope.error(`${oc.oc_num} has ${active} production allocation(s); cancel them before it can be ${action}.`);
+    }
+  },
+
+  /**
+   * draft / sent / confirmed → cancelled, keeping the order as history. Not
+   * while production is allocated to it, a live purchase order was raised
+   * from it, or an export document exists for it.
+   */
+  cancel: async (id, reason, userId) => {
+    let connection;
+    try {
+      connection = await pool.getConnection();
+      await connection.beginTransaction();
+      const [[oc]] = await connection.query('SELECT * FROM order_confirmations WHERE id = ? AND deleted_at IS NULL FOR UPDATE', [id]);
+      if (!oc) {
+        const err = new Error('Order Confirmation not found');
+        err.status = 404;
+        throw err;
+      }
+      if (oc.status === 'cancelled') throw companyScope.error('This order is already cancelled.');
+      const [[deps]] = await connection.query(`
+        SELECT (SELECT COUNT(*) FROM order_item_production_allocations WHERE order_confirmation_id = ? AND status = 'active') AS allocations,
+               (SELECT COUNT(*) FROM purchase_orders WHERE order_confirmation_id = ? AND deleted_at IS NULL AND status <> 'cancelled') AS purchase_orders,
+               (SELECT COUNT(*) FROM export_documents WHERE order_confirmation_id = ? AND deleted_at IS NULL) AS export_documents
+      `, [id, id, id]);
+      if (deps.allocations > 0 || deps.purchase_orders > 0 || deps.export_documents > 0) {
+        throw companyScope.error(`${oc.oc_num} cannot be cancelled: ${deps.allocations} production allocation(s), ${deps.purchase_orders} purchase order(s) and ${deps.export_documents} export document(s) depend on it.`);
+      }
+      await connection.query(
+        "UPDATE order_confirmations SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = ?, cancellation_reason = ?, updated_by = ?, updated_at = NOW() WHERE id = ?",
+        [userId, reason ? String(reason).trim() || null : null, userId, id]
+      );
+      await connection.commit();
+      return await orderConfirmationRepository.findById(id);
+    } catch (error) {
+      if (connection) await connection.rollback();
+      throw error;
+    } finally {
+      if (connection) connection.release();
+    }
   },
 
   /**

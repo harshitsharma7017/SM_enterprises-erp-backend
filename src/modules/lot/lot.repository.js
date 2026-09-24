@@ -90,6 +90,22 @@ export const findProductionSource = async (processingRecordId) => {
   return record;
 };
 
+/** Orders a finished lot / processing record's output is allocated to (active and cancelled, newest last). */
+export const findOrderAllocations = async (column, id) => {
+  const [rows] = await pool.query(`
+    SELECT a.id, a.quantity, a.unit, a.status, a.created_at, a.lot_id, l.lot_no,
+           oc.id AS order_confirmation_id, oc.oc_num, oc.status AS order_status,
+           b.company_name AS buyer_name, oci.design_no, oci.description AS item_description, oci.qty AS item_ordered_quantity
+    FROM order_item_production_allocations a
+    JOIN lots l ON l.id = a.lot_id
+    JOIN order_confirmations oc ON oc.id = a.order_confirmation_id
+    JOIN order_confirmation_items oci ON oci.id = a.order_confirmation_item_id
+    LEFT JOIN buyers b ON b.id = oc.buyer_id
+    WHERE a.${column} = ?
+    ORDER BY a.id`, [id]);
+  return rows;
+};
+
 export const lotRepository = {
   findAll: async ({ search, status, source_type, company_id, product_id, purchase_order_id, inward_entry_id, page = 1, limit = 15 }) => {
     let query = `${SELECT} WHERE 1 = 1`;
@@ -154,6 +170,7 @@ export const lotRepository = {
     `, [id]);
     lot.material_issues = issues;
     lot.production = lot.processing_record_id ? await findProductionSource(lot.processing_record_id) : null;
+    lot.order_allocations = lot.source_type === 'production' ? await findOrderAllocations('lot_id', lot.id) : [];
     return lot;
   },
 };

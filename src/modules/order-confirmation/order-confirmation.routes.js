@@ -3,7 +3,7 @@ import { orderConfirmationController } from './order-confirmation.controller.js'
 import { orderConfirmationValidator } from './order-confirmation.validator.js';
 import { exportDocumentController } from '../export-document/export-document.controller.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
-import { requirePermission } from '../../middleware/rbac.middleware.js';
+import { requirePermission, requireAnyPermission } from '../../middleware/rbac.middleware.js';
 
 const router = express.Router();
 
@@ -14,6 +14,9 @@ router.get('/', requirePermission('order-confirmation.view'), orderConfirmationC
 
 // GET /api/sales/order-confirmations/create
 router.get('/create', requirePermission('order-confirmation.create'), orderConfirmationController.create);
+
+// GET /api/sales/order-confirmations/form-brands?company_id= — the order form's brand options (no brand.view needed)
+router.get('/form-brands', requireAnyPermission(['order-confirmation.create', 'order-confirmation.edit']), orderConfirmationController.formBrands);
 
 // POST /api/sales/order-confirmations
 router.post(
@@ -54,5 +57,14 @@ router.post(
   requirePermission('export-document.create'),
   exportDocumentController.raiseFromOrderConfirmation
 );
+
+// POST /api/sales/order-confirmations/:id/cancel — explicit lifecycle action (the form cannot set 'cancelled')
+router.post('/:id/cancel', requirePermission('order-confirmation.edit'), orderConfirmationValidator.validateCancel, orderConfirmationController.cancel);
+
+// Order fulfilment: ordered / produced / dispatched / pending, and production allocation.
+router.get('/:id/fulfilment', requirePermission('order-confirmation.view'), orderConfirmationController.fulfilment);
+router.get('/:id/allocation-form-data', requirePermission('order-confirmation.allocate'), orderConfirmationController.allocationFormData);
+router.post('/:id/allocations', requirePermission('order-confirmation.allocate'), orderConfirmationValidator.validateAllocate, orderConfirmationController.allocate);
+router.post('/:id/allocations/:allocationId/cancel', requirePermission('order-confirmation.allocate'), orderConfirmationValidator.validateCancel, orderConfirmationController.cancelAllocation);
 
 export default router;

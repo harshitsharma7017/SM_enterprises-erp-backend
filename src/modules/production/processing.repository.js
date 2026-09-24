@@ -1,6 +1,6 @@
 import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
-import { findLotTrace } from '../lot/lot.repository.js';
+import { findLotTrace, findOrderAllocations } from '../lot/lot.repository.js';
 
 const isSet = (v) => v !== undefined && v !== null && v !== '';
 
@@ -101,6 +101,7 @@ export const processingRepository = {
     const record = rows[0];
     const [items] = await pool.query(`${ITEM_SELECT} WHERE pri.processing_record_id = ? ORDER BY pri.id`, [id]);
     record.items = await Promise.all(items.map(async (item) => ({ ...item, trace: await findLotTrace(item.lot_id) })));
+    record.order_allocations = await findOrderAllocations('processing_record_id', id);
     return record;
   },
 

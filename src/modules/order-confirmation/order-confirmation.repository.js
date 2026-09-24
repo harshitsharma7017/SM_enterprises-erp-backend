@@ -15,6 +15,18 @@ export const orderConfirmationRepository = {
       where += ' AND oc.status = ?';
       params.push(filters.status);
     }
+    if (filters.brand_id) {
+      where += ' AND oc.brand_id = ?';
+      params.push(Number(filters.brand_id));
+    }
+    if (filters.date_from) {
+      where += ' AND oc.oc_date >= ?';
+      params.push(filters.date_from);
+    }
+    if (filters.date_to) {
+      where += ' AND oc.oc_date <= ?';
+      params.push(filters.date_to);
+    }
     if (filters.search) {
       const term = `%${filters.search}%`;
       where += ` AND (oc.oc_num LIKE ? OR oc.buyer_ref LIKE ? OR oc.remarks LIKE ? OR b.company_name LIKE ? OR b.display_code LIKE ?)`;
@@ -27,11 +39,12 @@ export const orderConfirmationRepository = {
     let sql = `
       SELECT oc.*,
              b.company_name as buyer_company_name, b.display_code as buyer_display_code,
-             c.name as category_name,
+             c.name as category_name, br.name as brand_name,
              cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
       FROM order_confirmations oc
       LEFT JOIN buyers b ON oc.buyer_id = b.id
       LEFT JOIN categories c ON oc.category_id = c.id
+      LEFT JOIN brands br ON br.id = oc.brand_id
       LEFT JOIN companies cmp ON cmp.id = oc.company_id
     ` + where;
 
@@ -61,11 +74,25 @@ export const orderConfirmationRepository = {
     return { rows, total };
   },
 
+  /** Active brands of a company (brands are company-owned), for the order form. */
+  findFormBrands: async (companyId) => {
+    const id = Number(companyId);
+    if (!Number.isInteger(id) || id <= 0) return [];
+    const [rows] = await pool.query(
+      "SELECT id, code, name FROM brands WHERE company_id = ? AND status = 'active' AND deleted_at IS NULL ORDER BY name",
+      [id]
+    );
+    return rows;
+  },
+
   findById: async (id) => {
     const [rows] = await pool.query(`
-      SELECT oc.*, cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label
+      SELECT oc.*, cmp.code as company_code, COALESCE(cmp.short_name, cmp.name) as company_label,
+             br.name as brand_name, uc.name as canceller_name
       FROM order_confirmations oc
       LEFT JOIN companies cmp ON cmp.id = oc.company_id
+      LEFT JOIN brands br ON br.id = oc.brand_id
+      LEFT JOIN users uc ON uc.id = oc.cancelled_by
       WHERE oc.id = ? AND oc.deleted_at IS NULL
     `, [id]);
     
@@ -106,14 +133,14 @@ export const orderConfirmationRepository = {
     
     const [result] = await connection.query(`
       INSERT INTO order_confirmations (
-        company_id, oc_num, financial_year, mode, oc_date, buyer_ref, source_inquiry_id, buyer_id, category_id,
+        company_id, oc_num, financial_year, mode, oc_date, buyer_ref, source_inquiry_id, buyer_id, brand_id, category_id,
         document_format_id, agent_id, agent_commission_type, agent_commission_value, currency_id,
         incoterm, ship_method, shipment_date, pol, pod, payment_terms, delivery_details, packing_details,
         remarks, status, created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
       header.company_id ?? null, header.oc_num, header.financial_year, header.mode || 'oc', header.oc_date, header.buyer_ref || null,
-      header.source_inquiry_id || null, header.buyer_id, header.category_id, header.document_format_id,
+      header.source_inquiry_id || null, header.buyer_id, header.brand_id || null, header.category_id, header.document_format_id,
       header.agent_id || null, header.agent_commission_type || null, header.agent_commission_value || null,
       header.currency_id, header.incoterm || null, header.ship_method || null, header.shipment_date || null,
       header.pol || null, header.pod || null, header.payment_terms || null, header.delivery_details || null,
@@ -129,14 +156,14 @@ export const orderConfirmationRepository = {
     
     await connection.query(`
       UPDATE order_confirmations SET
-        company_id = ?, mode = ?, oc_date = ?, buyer_ref = ?, buyer_id = ?, category_id = ?,
+        company_id = ?, mode = ?, oc_date = ?, buyer_ref = ?, buyer_id = ?, brand_id = ?, category_id = ?,
         document_format_id = ?, agent_id = ?, agent_commission_type = ?, agent_commission_value = ?,
         currency_id = ?, incoterm = ?, ship_method = ?, shipment_date = ?, pol = ?, pod = ?,
         payment_terms = ?, delivery_details = ?, packing_details = ?, remarks = ?, status = ?,
         updated_by = ?, updated_at = ?
       WHERE id = ? AND deleted_at IS NULL
     `, [
-      data.company_id ?? null, data.mode || 'oc', data.oc_date, data.buyer_ref || null, data.buyer_id, data.category_id,
+      data.company_id ?? null, data.mode || 'oc', data.oc_date, data.buyer_ref || null, data.buyer_id, data.brand_id || null, data.category_id,
       data.document_format_id, data.agent_id || null, data.agent_commission_type || null, data.agent_commission_value || null,
       data.currency_id, data.incoterm || null, data.ship_method || null, data.shipment_date || null,
       data.pol || null, data.pod || null, data.payment_terms || null, data.delivery_details || null,

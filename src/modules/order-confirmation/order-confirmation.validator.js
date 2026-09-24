@@ -34,6 +34,7 @@ const storeSchema = Joi.object({
   buyer_ref: Joi.string().max(255).allow('', null),
   source_inquiry_id: Joi.number().integer().positive().allow(null),
   buyer_id: Joi.number().integer().positive().required(),
+  brand_id: Joi.number().integer().positive().allow(null, ''),
   category_id: Joi.number().integer().positive().required(),
   document_format_id: Joi.number().integer().positive().required(),
   agent_id: Joi.number().integer().positive().allow(null),
@@ -55,6 +56,19 @@ const storeSchema = Joi.object({
 
 const updateSchema = storeSchema;
 
+// 'cancelled' is only reachable through the explicit cancel action, never the form.
+const cancelSchema = Joi.object({
+  reason: Joi.string().trim().max(500).allow('', null),
+});
+
+const allocateSchema = Joi.object({
+  order_confirmation_item_id: Joi.number().integer().positive().required(),
+  lot_id: Joi.number().integer().positive().required(),
+  // Validated against the finished lot's UOM precision in the service; kept unrounded here.
+  quantity: Joi.alternatives().try(Joi.string().trim().max(30), Joi.number()).required(),
+  remarks: Joi.string().max(1000).allow('', null),
+});
+
 const raisePoSchema = Joi.object({
   item_ids: Joi.array().items(Joi.number().integer().positive()).min(1).required()
 });
@@ -74,6 +88,30 @@ export const orderConfirmationValidator = {
   },
   validateUpdate: (req, res, next) => {
     const { error, value } = updateSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
+    if (error) {
+      return res.status(422).json({
+        success: false,
+        message: 'Validation failed',
+        errors: error.details.map(err => err.message)
+      });
+    }
+    req.body = value;
+    next();
+  },
+  validateCancel: (req, res, next) => {
+    const { error, value } = cancelSchema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
+    if (error) {
+      return res.status(422).json({
+        success: false,
+        message: 'Validation failed',
+        errors: error.details.map(err => err.message)
+      });
+    }
+    req.body = value;
+    next();
+  },
+  validateAllocate: (req, res, next) => {
+    const { error, value } = allocateSchema.validate(req.body, { abortEarly: false, stripUnknown: true });
     if (error) {
       return res.status(422).json({
         success: false,

@@ -1,19 +1,21 @@
 import { orderConfirmationService } from './order-confirmation.service.js';
+import { orderFulfilmentService } from './order-fulfilment.service.js';
 import { orderConfirmationRepository } from './order-confirmation.repository.js';
 
 export const orderConfirmationController = {
   index: async (req, res, next) => {
     try {
-      const { search, limit = 15, page = 1, sort, direction, buyer_id, status, company_id } = req.query;
+      const { search, limit = 15, page = 1, sort, direction, buyer_id, status, company_id, date_from, date_to } = req.query;
       const offset = (page - 1) * limit;
+      const brand_id = Number.isInteger(Number(req.query.brand_id)) && Number(req.query.brand_id) > 0 ? Number(req.query.brand_id) : null;
 
       const { rows, total } = await orderConfirmationRepository.findAll({
-        search, limit, offset, sort, direction, buyer_id, status, company_id
+        search, limit, offset, sort, direction, buyer_id, status, company_id, brand_id, date_from, date_to
       });
 
       res.json({
         success: true,
-        data: rows,
+        data: await orderFulfilmentService.decorateList(rows),
         meta: {
           total,
           page: Number(page),
@@ -140,5 +142,62 @@ export const orderConfirmationController = {
     } catch (error) {
       next(error);
     }
-  }
+  },
+
+  // GET /api/sales/order-confirmations/form-brands?company_id=
+  formBrands: async (req, res, next) => {
+    try {
+      res.json({ success: true, data: await orderConfirmationRepository.findFormBrands(req.query.company_id) });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // POST /api/sales/order-confirmations/:id/cancel
+  cancel: async (req, res, next) => {
+    try {
+      const oc = await orderConfirmationService.cancel(req.params.id, req.body?.reason, req.user.id);
+      res.json({ success: true, message: `Order ${oc.oc_num} cancelled.`, data: oc });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // GET /api/sales/order-confirmations/:id/fulfilment — ordered / produced / dispatched / pending
+  fulfilment: async (req, res, next) => {
+    try {
+      res.json({ success: true, data: await orderFulfilmentService.fulfilment(req.params.id) });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // GET /api/sales/order-confirmations/:id/allocation-form-data?item_id=
+  allocationFormData: async (req, res, next) => {
+    try {
+      res.json({ success: true, data: await orderFulfilmentService.allocationFormData(req.params.id, req.query.item_id) });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // POST /api/sales/order-confirmations/:id/allocations
+  allocate: async (req, res, next) => {
+    try {
+      await orderFulfilmentService.allocate(req.params.id, req.body, req.user.id);
+      res.status(201).json({ success: true, message: 'Production allocated to the order.', data: await orderFulfilmentService.fulfilment(req.params.id) });
+    } catch (error) {
+      next(error);
+    }
+  },
+
+  // POST /api/sales/order-confirmations/:id/allocations/:allocationId/cancel
+  cancelAllocation: async (req, res, next) => {
+    try {
+      await orderFulfilmentService.cancelAllocation(req.params.id, req.params.allocationId, req.body?.reason, req.user.id);
+      res.json({ success: true, message: 'Allocation cancelled.', data: await orderFulfilmentService.fulfilment(req.params.id) });
+    } catch (error) {
+      next(error);
+    }
+  },
 };
