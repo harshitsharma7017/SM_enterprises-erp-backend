@@ -1,5 +1,5 @@
 import { reportRepository } from './report.repository.js';
-import { REPORTS, findReport } from './report-definitions.js';
+import { REPORTS, findReport, permissionsOf } from './report-definitions.js';
 import { runPage, runExport, describe, parseCompany } from './report-runner.js';
 import { traceLot } from './report-traceability.service.js';
 import { rbacService } from '../../services/rbac.service.js';
@@ -17,7 +17,7 @@ const authorised = async (req, res, action) => {
     res.status(404).json({ success: false, message: 'Report not found' });
     return null;
   }
-  if (!(await hasAll(req.user.id, [action === 'export' ? 'report.export' : 'report.view', def.permission]))) {
+  if (!(await hasAll(req.user.id, [action === 'export' ? 'report.export' : 'report.view', ...permissionsOf(def)]))) {
     res.status(403).json({ success: false, message: 'Forbidden' });
     return null;
   }
@@ -55,7 +55,7 @@ export const reportController = {
       const canExport = await rbacService.hasPermission(req.user.id, 'report.export');
       const visible = [];
       for (const def of REPORTS) {
-        if (await rbacService.hasPermission(req.user.id, def.permission)) visible.push({ ...describe(def), can_export: canExport });
+        if (await hasAll(req.user.id, permissionsOf(def))) visible.push({ ...describe(def), can_export: canExport });
       }
       res.json({ success: true, data: visible });
     } catch (error) {

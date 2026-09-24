@@ -15,12 +15,25 @@
  * company: the company column the runner filters on (always, server-side).
  * columns: report columns, in export order. type: text | number | date | datetime.
  * filters: { name, label, kind: id | enum | like, column, values?, options? }.
+ * permission: the module view permission(s) the report also needs (a string, or a list — all required).
+ *
+ * Phase 16 management reports, same rules:
+ *   debit notes       → debit-note module NOTE_SELECT (stored quantity / price / amount / basis)
+ *   supplier history  → one row per recorded supplier transaction (PO line, GRN line, QC, return,
+ *                       debit note) — history only, no score / balance / rating
+ *   finished material → production lots + the stock ledger + Phase 10 allocations / Phase 11 dispatches
+ *   brand requirements→ material-requirement REQUIREMENT_SELECT (required / planned / ordered as the
+ *                       requirement screens show them), one row per requirement, never merged
  */
 import { PO_LINE_SELECT } from '../inward-entry/inward-entry.repository.js';
 import { BALANCE_SELECT } from '../inventory/inventory.repository.js';
 import { SCAN_SELECT } from '../barcode/barcode.repository.js';
 import { ACTIVE_ALLOCATED_BY_ITEM, DISPATCHED_BY_ITEM } from '../order-confirmation/order-fulfilment.repository.js';
 import { itemFigures } from '../order-confirmation/order-fulfilment.service.js';
+import { NOTE_SELECT } from '../debit-note/debit-note.repository.js';
+import { ACTIVE_ALLOCATED_BY_LOT } from '../order-confirmation/order-fulfilment.repository.js';
+import { REQUIREMENT_SELECT } from '../material-requirement/material-requirement.repository.js';
+import { STOCK_BY_LOT } from '../inventory/stock-ledger.js';
 
 // Legacy rows with no company are labelled, so every row states its company.
 const COMPANY_COLUMNS = `COALESCE(cmp.code, 'Unassigned') AS company_code, COALESCE(cmp.short_name, cmp.name, 'Unassigned') AS company_label`;
@@ -347,6 +360,218 @@ export const REPORTS = [
     ],
     mapRow: (r) => ({ ...r, duplicate: r.is_duplicate ? 'yes' : 'no' }),
   },
+
+  {
+    key: 'debit-notes',
+    title: 'Debit Notes',
+    permission: 'debit-note.view',
+    company: 'dn.company_id',
+    base: `${NOTE_SELECT} WHERE 1 = 1`,
+    orderBy: 'dn.debit_note_date DESC, dn.id DESC',
+    date: { column: 'dn.debit_note_date', type: 'date' },
+    search: ['dn.debit_note_no', 'qi.qc_no', 'l.lot_no', 'ie.inward_no', 'po.po_num', 's.company_name', 'p.name', 'sr.return_no', 'dn.reason'],
+    filters: [
+      enumFilter('status', 'Status', 'dn.status', ['draft', 'posted', 'cancelled']),
+      enumFilter('amount_basis', 'Amount basis', 'dn.amount_basis', ['po_price', 'manual', 'none']),
+      supplier('dn.supplier_id'),
+      product('dn.product_id'),
+      { name: 'po', label: 'PO No.', kind: 'like', column: 'po.po_num' },
+      lot('l.lot_no'),
+    ],
+    columns: [
+      company,
+      { key: 'debit_note_no', label: 'Debit Note No.', type: 'text' },
+      { key: 'debit_note_date', label: 'Date', type: 'date' },
+      { key: 'supplier_name', label: 'Supplier', type: 'text' },
+      { key: 'po_num', label: 'PO No.', type: 'text' },
+      { key: 'inward_no', label: 'GRN No.', type: 'text' },
+      { key: 'lot_no', label: 'Lot No.', type: 'text' },
+      { key: 'qc_no', label: 'QC No.', type: 'text' },
+      { key: 'return_no', label: 'Supplier Return', type: 'text' },
+      { key: 'product_name', label: 'Material', type: 'text' },
+      { key: 'unit', label: 'UOM', type: 'text' },
+      { key: 'quantity', label: 'Debited Qty', type: 'number' },
+      { key: 'qc_rejected_quantity', label: 'QC Rejected', type: 'number' },
+      { key: 'unit_price', label: 'Unit Price', type: 'number' },
+      { key: 'amount', label: 'Amount', type: 'number' },
+      { key: 'amount_basis', label: 'Amount Basis', type: 'text' },
+      { key: 'reason', label: 'Reason', type: 'text' },
+      { key: 'status', label: 'Status', type: 'text' },
+    ],
+  },
+  {
+    key: 'supplier-history',
+    title: 'Supplier History',
+    // Every transaction type shown needs its own module's view permission.
+    permission: ['purchase-order.view', 'inward-entry.view', 'supplier-return.view', 'debit-note.view'],
+    company: 'h.company_id',
+    base: `
+      SELECT h.*, ${COMPANY_COLUMNS}, s.company_name AS supplier_name, p.name AS product_name, p.material_type_id
+      FROM (
+        SELECT 'po_line' AS event_type, pl.id AS source_id, po.company_id, po.supplier_id, po.po_date AS event_date,
+               po.po_num AS document_no, po.status AS document_status, po.po_num, NULL AS inward_no, NULL AS lot_no,
+               pl.product_id, pl.unit, pl.ordered_quantity AS quantity, NULL AS accepted_quantity, NULL AS rejected_quantity,
+               pl.received_quantity, pl.pending_quantity, NULL AS amount
+        FROM (${PO_LINE_SELECT}) pl JOIN purchase_orders po ON po.id = pl.purchase_order_id
+        WHERE po.deleted_at IS NULL
+        UNION ALL
+        SELECT 'grn_line', iei.id, ie.company_id, ie.supplier_id, ie.inward_date, ie.inward_no, ie.receipt_status, po.po_num, ie.inward_no, l.lot_no,
+               iei.product_id, COALESCE(l.unit, iei.unit), COALESCE(iei.received_quantity, iei.received_qty), NULL, NULL, NULL, NULL, NULL
+        FROM inward_entry_items iei JOIN inward_entries ie ON ie.id = iei.inward_entry_id
+        LEFT JOIN purchase_orders po ON po.id = ie.purchase_order_id LEFT JOIN lots l ON l.inward_entry_item_id = iei.id
+        WHERE ie.deleted_at IS NULL
+        UNION ALL
+        SELECT 'qc', qi.id, qi.company_id, qi.supplier_id, qi.inspection_date, qi.qc_no, CONCAT(qi.status, COALESCE(CONCAT(' / ', qi.result), '')), po.po_num, ie.inward_no, l.lot_no,
+               qi.product_id, qi.unit, qi.inspected_quantity, qi.accepted_quantity, qi.rejected_quantity, NULL, NULL, NULL
+        FROM quality_inspections qi LEFT JOIN purchase_orders po ON po.id = qi.purchase_order_id
+        LEFT JOIN inward_entries ie ON ie.id = qi.inward_entry_id LEFT JOIN lots l ON l.id = qi.lot_id
+        UNION ALL
+        SELECT 'supplier_return', sr.id, sr.company_id, sr.supplier_id, sr.return_date, sr.return_no, sr.status, po.po_num, ie.inward_no, l.lot_no,
+               sr.product_id, sr.unit, sr.quantity, NULL, NULL, NULL, NULL, NULL
+        FROM supplier_returns sr LEFT JOIN purchase_orders po ON po.id = sr.purchase_order_id
+        LEFT JOIN inward_entries ie ON ie.id = sr.inward_entry_id LEFT JOIN lots l ON l.id = sr.lot_id
+        UNION ALL
+        SELECT 'debit_note', dn.id, dn.company_id, dn.supplier_id, dn.debit_note_date, dn.debit_note_no, dn.status, po.po_num, ie.inward_no, l.lot_no,
+               dn.product_id, dn.unit, dn.quantity, NULL, NULL, NULL, NULL, dn.amount
+        FROM debit_notes dn LEFT JOIN purchase_orders po ON po.id = dn.purchase_order_id
+        LEFT JOIN inward_entries ie ON ie.id = dn.inward_entry_id LEFT JOIN lots l ON l.id = dn.lot_id
+      ) h
+      LEFT JOIN companies cmp ON cmp.id = h.company_id
+      LEFT JOIN suppliers s ON s.id = h.supplier_id
+      LEFT JOIN products p ON p.id = h.product_id
+      WHERE 1 = 1`,
+    orderBy: "h.event_date DESC, FIELD(h.event_type, 'debit_note', 'supplier_return', 'qc', 'grn_line', 'po_line'), h.source_id DESC",
+    date: { column: 'h.event_date', type: 'date' },
+    search: ['h.document_no', 'h.po_num', 'h.inward_no', 'h.lot_no', 's.company_name', 'p.name'],
+    filters: [
+      supplier('h.supplier_id'),
+      enumFilter('event_type', 'Transaction', 'h.event_type', ['po_line', 'grn_line', 'qc', 'supplier_return', 'debit_note']),
+      product('h.product_id'),
+      materialType('p.material_type_id'),
+      lot('h.lot_no'),
+    ],
+    columns: [
+      company,
+      { key: 'supplier_name', label: 'Supplier', type: 'text' },
+      { key: 'event_date', label: 'Date', type: 'date' },
+      { key: 'event_type', label: 'Transaction', type: 'text' },
+      { key: 'document_no', label: 'Document No.', type: 'text' },
+      { key: 'document_status', label: 'Status', type: 'text' },
+      { key: 'po_num', label: 'PO No.', type: 'text' },
+      { key: 'inward_no', label: 'GRN No.', type: 'text' },
+      { key: 'lot_no', label: 'Lot No.', type: 'text' },
+      { key: 'product_name', label: 'Material', type: 'text' },
+      { key: 'unit', label: 'UOM', type: 'text' },
+      { key: 'quantity', label: 'Quantity (ordered / received / inspected / returned / debited)', type: 'number' },
+      { key: 'received_quantity', label: 'PO Received', type: 'number' },
+      { key: 'pending_quantity', label: 'PO Pending', type: 'number' },
+      { key: 'accepted_quantity', label: 'QC Accepted', type: 'number' },
+      { key: 'rejected_quantity', label: 'QC Rejected', type: 'number' },
+      { key: 'amount', label: 'Debit Note Amount', type: 'number' },
+    ],
+  },
+  {
+    key: 'finished-material',
+    title: 'Finished Material',
+    permission: ['processing.view', 'stock.view'],
+    company: 'f.company_id',
+    base: `
+      SELECT f.* FROM (
+        SELECT l.id AS lot_id, l.company_id, ${COMPANY_COLUMNS}, l.lot_no, l.status AS lot_status, l.received_date,
+               l.product_id, p.name AS product_name, p.material_type_id, COALESCE(u.code, l.unit) AS unit, COALESCE(u.decimal_places, 0) AS uom_decimal_places,
+               l.quantity AS produced_quantity, pr.processing_no, pr.start_date, pr.completion_date, mi.issue_no, mi.job_reference,
+               COALESCE(st.stock_quantity, 0) AS stock_quantity, COALESCE(st.stock_dispatched_quantity, 0) AS dispatched_quantity,
+               COALESCE(al.allocated, 0) AS allocated_quantity,
+               CASE WHEN COALESCE(st.stock_quantity, 0) > 0 THEN 'available' ELSE 'nil' END AS stock_status,
+               (SELECT GROUP_CONCAT(DISTINCT oc.oc_num ORDER BY oc.id SEPARATOR ', ') FROM order_item_production_allocations a
+                JOIN order_confirmations oc ON oc.id = a.order_confirmation_id WHERE a.lot_id = l.id AND a.status = 'active') AS orders,
+               (SELECT GROUP_CONCAT(DISTINCT d.dispatch_no ORDER BY d.id SEPARATOR ', ') FROM dispatch_items di
+                JOIN dispatches d ON d.id = di.dispatch_id WHERE di.lot_id = l.id AND d.status = 'posted') AS dispatches
+        FROM lots l
+        JOIN processing_records pr ON pr.id = l.processing_record_id
+        JOIN material_issues mi ON mi.id = pr.material_issue_id
+        LEFT JOIN companies cmp ON cmp.id = l.company_id
+        LEFT JOIN products p ON p.id = l.product_id
+        LEFT JOIN uoms u ON u.id = l.uom_id
+        LEFT JOIN (${STOCK_BY_LOT}) st ON st.lot_id = l.id
+        LEFT JOIN (${ACTIVE_ALLOCATED_BY_LOT}) al ON al.lot_id = l.id
+        WHERE l.source_type = 'production'
+      ) f WHERE 1 = 1`,
+    orderBy: 'f.received_date DESC, f.lot_id DESC',
+    date: { column: 'f.received_date', type: 'date', label: 'Posted to stock' },
+    search: ['f.lot_no', 'f.product_name', 'f.processing_no', 'f.issue_no', 'f.job_reference', 'f.orders', 'f.dispatches'],
+    filters: [
+      enumFilter('stock_status', 'Stock', 'f.stock_status', ['available', 'nil']),
+      enumFilter('lot_status', 'Lot status', 'f.lot_status', ['received', 'cancelled']),
+      product('f.product_id'),
+      materialType('f.material_type_id'),
+      lot('f.lot_no'),
+    ],
+    columns: [
+      company,
+      { key: 'lot_no', label: 'Finished Lot', type: 'text' },
+      { key: 'product_name', label: 'Product', type: 'text' },
+      { key: 'unit', label: 'UOM', type: 'text' },
+      { key: 'produced_quantity', label: 'Produced', type: 'number' },
+      { key: 'processing_no', label: 'Processing No.', type: 'text' },
+      { key: 'issue_no', label: 'Material Issue', type: 'text' },
+      { key: 'job_reference', label: 'Job Reference', type: 'text' },
+      { key: 'completion_date', label: 'Processing Completed', type: 'date' },
+      { key: 'received_date', label: 'Posted to Stock', type: 'date' },
+      { key: 'stock_quantity', label: 'Current Stock', type: 'number' },
+      { key: 'allocated_quantity', label: 'Allocated to Orders', type: 'number' },
+      { key: 'dispatched_quantity', label: 'Dispatched', type: 'number' },
+      { key: 'orders', label: 'Orders', type: 'text' },
+      { key: 'dispatches', label: 'Dispatches', type: 'text' },
+      { key: 'lot_status', label: 'Lot Status', type: 'text' },
+    ],
+  },
+  {
+    key: 'brand-requirements',
+    title: 'Brand-wise Requirements',
+    permission: 'material-requirement.view',
+    company: 'r.company_id',
+    base: `
+      SELECT r.*, pm.material_type_id,
+             (SELECT GROUP_CONCAT(DISTINCT mp.plan_no ORDER BY mp.id SEPARATOR ', ') FROM material_plan_items mpi
+              JOIN material_plans mp ON mp.id = mpi.material_plan_id AND mp.deleted_at IS NULL
+              WHERE mpi.material_requirement_id = r.id) AS plan_nos
+      FROM (${REQUIREMENT_SELECT}) r
+      LEFT JOIN products pm ON pm.id = r.product_id
+      WHERE 1 = 1`,
+    orderBy: 'r.brand_name, r.period_start DESC, r.projection_no, r.requirement_no, r.id',
+    date: { column: 'r.period_start', type: 'date', label: 'Projection period start' },
+    search: ['r.requirement_no', 'r.projection_no', 'r.projection_title', 'r.brand_name', 'r.product_name', 'r.item_group_code'],
+    filters: [
+      { name: 'brand_id', label: 'Brand', kind: 'id', column: 'r.brand_id', options: 'brands' },
+      enumFilter('status', 'Requirement status', 'r.status', ['open', 'planned', 'closed']),
+      product('r.product_id'),
+      materialType('pm.material_type_id'),
+    ],
+    columns: [
+      company,
+      { key: 'brand_name', label: 'Brand', type: 'text' },
+      { key: 'projection_no', label: 'Projection No.', type: 'text' },
+      { key: 'projection_title', label: 'Projection', type: 'text' },
+      { key: 'period_start', label: 'Period Start', type: 'date' },
+      { key: 'period_end', label: 'Period End', type: 'date' },
+      { key: 'requirement_no', label: 'Requirement No.', type: 'text' },
+      { key: 'product_name', label: 'Material', type: 'text' },
+      { key: 'material_type_name', label: 'Material Type', type: 'text' },
+      { key: 'uom_code', label: 'UOM', type: 'text' },
+      { key: 'required_quantity', label: 'Required', type: 'number' },
+      { key: 'planned_quantity', label: 'Planned (committed plans)', type: 'number' },
+      { key: 'allocated_quantity', label: 'On Plans (incl. drafts)', type: 'number' },
+      { key: 'pending_quantity', label: 'Pending Planning', type: 'number' },
+      { key: 'ordered_quantity', label: 'Ordered (confirmed POs)', type: 'number' },
+      { key: 'order_pending_quantity', label: 'Pending Ordering', type: 'number' },
+      { key: 'plan_nos', label: 'Material Plans', type: 'text' },
+      { key: 'status', label: 'Status', type: 'text' },
+    ],
+  },
 ];
+
+/** A report's module view permission(s), always as a list (all are required). */
+export const permissionsOf = (def) => (Array.isArray(def.permission) ? def.permission : [def.permission]);
 
 export const findReport = (key) => REPORTS.find((r) => r.key === key) || null;

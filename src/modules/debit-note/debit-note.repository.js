@@ -3,7 +3,7 @@ import { findLotTrace } from '../lot/lot.repository.js';
 import { sourceFilters, paginate } from '../quality-control/quality-control.repository.js';
 import { RETURN_TOTALS_BY_QC, DEBIT_TOTALS_BY_QC } from '../quality-control/qc-ledger.js';
 
-const NOTE_SELECT = `
+export const NOTE_SELECT = `
   SELECT dn.*, qi.qc_no, qi.inspection_date, qi.rejected_quantity AS qc_rejected_quantity, qi.result AS qc_result,
          sr.return_no, sr.return_date, sr.quantity AS return_quantity, sr.status AS return_status,
          l.lot_no, l.width_inch, l.supplier_lot_no, ie.inward_no, ie.inward_date,

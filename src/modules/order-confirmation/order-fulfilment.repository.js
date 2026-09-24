@@ -20,7 +20,7 @@ export const DISPATCHED_BY_ITEM = `
   GROUP BY di.order_confirmation_item_id
 `;
 
-const ACTIVE_ALLOCATED_BY_LOT = `
+export const ACTIVE_ALLOCATED_BY_LOT = `
   SELECT lot_id, SUM(quantity) AS allocated
   FROM order_item_production_allocations WHERE status = 'active'
   GROUP BY lot_id

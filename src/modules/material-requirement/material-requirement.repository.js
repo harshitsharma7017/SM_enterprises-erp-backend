@@ -54,6 +54,9 @@ const SELECT = `
   LEFT JOIN (${REQUIREMENT_ORDER_AGGREGATE}) ro ON ro.source_id = mr.id
 `;
 
+// Reused by the brand-wise requirements report (same figures as the requirement screens).
+export { SELECT as REQUIREMENT_SELECT };
+
 export const materialRequirementRepository = {
   findAll: async ({ search, status, company_id, brand_id, brand_projection_id, plannable, page = 1, limit = 15 }) => {
     let query = `${SELECT} WHERE 1 = 1`;
