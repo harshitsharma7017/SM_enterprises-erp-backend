@@ -61,6 +61,7 @@ const BALANCE_SELECT = `
 const MOVEMENT_SELECT = `
   SELECT m.*, l.lot_no, l.width_inch, l.inward_entry_id, l.purchase_order_id, l.source_type AS lot_source_type,
          prc.processing_no, prc.material_issue_id AS output_material_issue_id,
+         dsp.id AS dispatch_id, dsp.dispatch_no,
          loc.code AS location_code, loc.name AS location_name,
          p.name AS product_name, p.item_group_code,
          qi.qc_no, mi.id AS material_issue_id, mi.issue_no, mi.job_reference, ie.inward_no, po.po_num, po.origin AS purchase_order_origin, s.company_name AS supplier_name,
@@ -81,6 +82,8 @@ const MOVEMENT_SELECT = `
   LEFT JOIN material_issue_items mii ON mii.id = m.material_issue_item_id
   LEFT JOIN material_issues mi ON mi.id = mii.material_issue_id
   LEFT JOIN processing_records prc ON prc.id = m.processing_record_id
+  LEFT JOIN dispatch_items dspi ON dspi.id = m.dispatch_item_id
+  LEFT JOIN dispatches dsp ON dsp.id = dspi.dispatch_id
   LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
   LEFT JOIN purchase_orders po ON po.id = l.purchase_order_id
   LEFT JOIN suppliers s ON s.id = l.supplier_id
@@ -217,11 +220,11 @@ export const inventoryRepository = {
         params.push(Number(value));
       }
     }
-    if (['QC_ACCEPTED_RECEIPT', 'STOCK_ADJUSTMENT', 'MATERIAL_ISSUE', 'PRODUCTION_OUTPUT'].includes(filters.movement_type)) {
+    if (['QC_ACCEPTED_RECEIPT', 'STOCK_ADJUSTMENT', 'MATERIAL_ISSUE', 'PRODUCTION_OUTPUT', 'DISPATCH'].includes(filters.movement_type)) {
       query += ' AND m.movement_type = ?';
       params.push(filters.movement_type);
     }
-    if (['quality_inspection', 'stock_adjustment', 'material_issue', 'processing_record'].includes(filters.source_type)) {
+    if (['quality_inspection', 'stock_adjustment', 'material_issue', 'processing_record', 'dispatch'].includes(filters.source_type)) {
       query += ' AND m.source_type = ?';
       params.push(filters.source_type);
     }
@@ -230,8 +233,8 @@ export const inventoryRepository = {
       params.push(`%${filters.lot}%`);
     }
     if (isSet(filters.source)) {
-      query += ' AND (qi.qc_no LIKE ? OR mi.issue_no LIKE ? OR prc.processing_no LIKE ? OR ie.inward_no LIKE ? OR po.po_num LIKE ?)';
-      params.push(...Array(5).fill(`%${filters.source}%`));
+      query += ' AND (qi.qc_no LIKE ? OR mi.issue_no LIKE ? OR prc.processing_no LIKE ? OR dsp.dispatch_no LIKE ? OR ie.inward_no LIKE ? OR po.po_num LIKE ?)';
+      params.push(...Array(6).fill(`%${filters.source}%`));
     }
     if (isSet(filters.date_from)) {
       query += ' AND m.movement_date >= ?';
@@ -242,7 +245,7 @@ export const inventoryRepository = {
       params.push(filters.date_to);
     }
     if (filters.search) {
-      const columns = ['m.movement_no', 'l.lot_no', 'p.name', 'qi.qc_no', 'mi.issue_no', 'mi.job_reference', 'prc.processing_no', 'm.reason', 'loc.code'];
+      const columns = ['m.movement_no', 'l.lot_no', 'p.name', 'qi.qc_no', 'mi.issue_no', 'mi.job_reference', 'prc.processing_no', 'dsp.dispatch_no', 'm.reason', 'loc.code'];
       query += ` AND (${columns.map((c) => `${c} LIKE ?`).join(' OR ')})`;
       params.push(...columns.map(() => `%${filters.search}%`));
     }
@@ -326,13 +329,13 @@ export const inventoryRepository = {
       INSERT INTO stock_movements (
         company_id, movement_no, financial_year, movement_date, movement_type, direction, location_id, lot_id,
         product_id, uom_id, unit, quantity, source_type, quality_inspection_id, material_issue_item_id, processing_record_id,
-        reason, remarks, created_by, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        dispatch_item_id, reason, remarks, created_by, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `, [
       data.company_id, data.movement_no, data.financial_year, data.movement_date, data.movement_type, data.direction,
       data.location_id, data.lot_id, data.product_id, data.uom_id, data.unit, data.quantity, data.source_type,
       data.quality_inspection_id ?? null, data.material_issue_item_id ?? null, data.processing_record_id ?? null,
-      data.reason, data.remarks, data.created_by,
+      data.dispatch_item_id ?? null, data.reason, data.remarks, data.created_by,
     ]);
     return result.insertId;
   },

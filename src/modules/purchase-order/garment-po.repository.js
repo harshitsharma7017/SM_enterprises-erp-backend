@@ -213,4 +213,13 @@ export const garmentPoRepository = {
     );
     return rows[0].cnt;
   },
+
+  /** Non-cancelled direct supplier dispatches of a PO (they fulfil its lines like receipts do). */
+  countDispatches: async (connection, poId) => {
+    const [rows] = await connection.query(
+      "SELECT COUNT(*) AS cnt FROM dispatches WHERE purchase_order_id = ? AND status <> 'cancelled'",
+      [poId]
+    );
+    return rows[0].cnt;
+  },
 };

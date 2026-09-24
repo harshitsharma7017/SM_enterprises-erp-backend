@@ -27,17 +27,31 @@ const RECEIVED_BY_PO_LINE = `
 `;
 
 /**
+ * Quantity of each PO line the mill shipped straight to the customer (POSTED
+ * direct supplier dispatches). A PO line is fulfilled either way, so
+ * received (GRN) + direct-dispatched never exceeds the ordered quantity.
+ */
+export const DIRECT_DISPATCHED_BY_PO_LINE = `
+  SELECT di.purchase_order_item_id, SUM(di.quantity) AS direct_qty
+  FROM dispatch_items di
+  JOIN dispatches d ON d.id = di.dispatch_id
+  WHERE d.status = 'posted' AND d.dispatch_type = 'DIRECT_SUPPLIER_DISPATCH'
+  GROUP BY di.purchase_order_item_id
+`;
+
+/**
  * A PO line with everything receiving derives and validates. The receiving
  * unit is the planning line's frozen UOM for planning POs, else the
  * product's UOM; OC lines whose product has no UOM fall back to the PO
  * line's text unit with whole-number precision (their PO qty is an integer).
  */
 const PO_LINE_SELECT = `
-  SELECT poi.id, poi.purchase_order_id, poi.sort_order, poi.product_id, poi.description,
+  SELECT poi.id, poi.purchase_order_id, poi.sort_order, poi.product_id, poi.description, poi.order_confirmation_item_id,
          COALESCE(poi.ordered_quantity, poi.qty) AS ordered_quantity,
          COALESCE(rcv.received_qty, 0) AS received_quantity,
          COALESCE(rcv.draft_qty, 0) AS draft_quantity,
-         COALESCE(poi.ordered_quantity, poi.qty) - COALESCE(rcv.received_qty, 0) AS pending_quantity,
+         COALESCE(dd.direct_qty, 0) AS direct_dispatched_quantity,
+         COALESCE(poi.ordered_quantity, poi.qty) - COALESCE(rcv.received_qty, 0) - COALESCE(dd.direct_qty, 0) AS pending_quantity,
          p.name AS product_name, p.item_group_code, p.company_id AS product_company_id,
          p.status AS product_status, p.deleted_at AS product_deleted_at,
          COALESCE(bpi.uom_id, p.uom_id) AS uom_id,
@@ -50,6 +64,7 @@ const PO_LINE_SELECT = `
   LEFT JOIN brand_projection_items bpi ON bpi.id = mr.brand_projection_item_id
   LEFT JOIN uoms u ON u.id = COALESCE(bpi.uom_id, p.uom_id)
   LEFT JOIN (${RECEIVED_BY_PO_LINE}) rcv ON rcv.purchase_order_item_id = poi.id
+  LEFT JOIN (${DIRECT_DISPATCHED_BY_PO_LINE}) dd ON dd.purchase_order_item_id = poi.id
 `;
 
 const HEADER_SELECT = `
@@ -229,11 +244,12 @@ export const inwardEntryRepository = {
     const [rows] = await pool.query(`
       SELECT po.id, po.po_num, po.origin, po.po_date, po.status, po.supplier_id,
              s.company_name AS supplier_name, oc.oc_num, mp.plan_no AS material_plan_no,
-             SUM(GREATEST(COALESCE(poi.ordered_quantity, poi.qty) - COALESCE(rcv.received_qty, 0), 0)) AS pending_total,
+             SUM(GREATEST(COALESCE(poi.ordered_quantity, poi.qty) - COALESCE(rcv.received_qty, 0) - COALESCE(dd.direct_qty, 0), 0)) AS pending_total,
              COUNT(poi.id) AS lines_count
       FROM purchase_orders po
       JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
       LEFT JOIN (${RECEIVED_BY_PO_LINE}) rcv ON rcv.purchase_order_item_id = poi.id
+      LEFT JOIN (${DIRECT_DISPATCHED_BY_PO_LINE}) dd ON dd.purchase_order_item_id = poi.id
       LEFT JOIN suppliers s ON s.id = po.supplier_id
       LEFT JOIN order_confirmations oc ON oc.id = po.order_confirmation_id
       LEFT JOIN material_plans mp ON mp.id = po.material_plan_id

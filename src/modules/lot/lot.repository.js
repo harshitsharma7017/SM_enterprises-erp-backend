@@ -19,6 +19,7 @@ const SELECT = `
          COALESCE(st.stock_quantity, 0) AS stock_quantity,
          COALESCE(st.stock_received_quantity, 0) AS stock_received_quantity,
          COALESCE(st.stock_issued_quantity, 0) AS stock_issued_quantity,
+         COALESCE(st.stock_dispatched_quantity, 0) AS stock_dispatched_quantity,
          CASE WHEN COALESCE(qt.inspected_quantity, 0) = 0 THEN 'not_inspected'
               WHEN qt.inspected_quantity < l.quantity THEN 'partially_inspected'
               ELSE 'inspected' END AS qc_state
@@ -171,6 +172,15 @@ export const lotRepository = {
     lot.material_issues = issues;
     lot.production = lot.processing_record_id ? await findProductionSource(lot.processing_record_id) : null;
     lot.order_allocations = lot.source_type === 'production' ? await findOrderAllocations('lot_id', lot.id) : [];
+    const [dispatches] = await pool.query(`
+      SELECT di.id, di.quantity, di.unit, d.id AS dispatch_id, d.dispatch_no, d.dispatch_date, d.status,
+             d.order_confirmation_id, oc.oc_num, b.company_name AS buyer_name, d.destination_name
+      FROM dispatch_items di
+      JOIN dispatches d ON d.id = di.dispatch_id
+      LEFT JOIN order_confirmations oc ON oc.id = d.order_confirmation_id
+      LEFT JOIN buyers b ON b.id = d.buyer_id
+      WHERE di.lot_id = ? ORDER BY d.id`, [id]);
+    lot.dispatches = dispatches;
     return lot;
   },
 };

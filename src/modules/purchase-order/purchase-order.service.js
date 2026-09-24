@@ -99,6 +99,13 @@ export const purchaseOrderService = {
       if (receipts[0].cnt > 0) {
         throw companyScope.error('Goods receipts exist for this purchase order, so its lines can no longer be edited.');
       }
+      const [dispatches] = await connection.query(
+        "SELECT COUNT(*) AS cnt FROM dispatches WHERE purchase_order_id = ? AND status <> 'cancelled'",
+        [id]
+      );
+      if (dispatches[0].cnt > 0) {
+        throw companyScope.error('Direct dispatches exist for this purchase order, so its lines can no longer be edited.');
+      }
       await companyScope.assertLinks(poRows.length ? poRows[0].company_id : null, {
         productIds: (data.items || []).map((item) => item && item.product_id),
       }, connection);
@@ -140,6 +147,11 @@ export const purchaseOrderService = {
       if (rows.length && GARMENT_ORIGINS.includes(rows[0].origin) && rows[0].status !== 'draft') {
         throw companyScope.error('Only a draft planning purchase order can be deleted. Cancel it instead.');
       }
+      const [[{ dispatches }]] = await connection.query(
+        "SELECT COUNT(*) AS dispatches FROM dispatches WHERE purchase_order_id = ? AND status <> 'cancelled'",
+        [id]
+      );
+      if (dispatches > 0) throw companyScope.error('Direct dispatches exist for this purchase order, so it cannot be deleted.');
 
       await purchaseOrderRepository.delete(connection, id);
 

@@ -17,6 +17,8 @@ const OWNED_TABLES = [
   { table: 'stock_movements', label: 'stock movement' },
   { table: 'material_issues', label: 'material issue' },
   { table: 'processing_records', label: 'processing record' },
+  { table: 'order_item_production_allocations', label: 'production allocation' },
+  { table: 'dispatches', label: 'dispatch' },
   { table: 'export_documents', label: 'export document' },
 ];
 

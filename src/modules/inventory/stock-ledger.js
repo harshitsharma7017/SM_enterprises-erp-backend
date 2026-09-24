@@ -10,7 +10,8 @@ export const STOCK_BY_LOT = `
   SELECT sm.lot_id,
          SUM(${SIGNED_QUANTITY}) AS stock_quantity,
          SUM(CASE WHEN sm.movement_type IN ('QC_ACCEPTED_RECEIPT', 'PRODUCTION_OUTPUT') THEN sm.quantity ELSE 0 END) AS stock_received_quantity,
-         SUM(CASE WHEN sm.movement_type = 'MATERIAL_ISSUE' THEN sm.quantity ELSE 0 END) AS stock_issued_quantity
+         SUM(CASE WHEN sm.movement_type = 'MATERIAL_ISSUE' THEN sm.quantity ELSE 0 END) AS stock_issued_quantity,
+         SUM(CASE WHEN sm.movement_type = 'DISPATCH' THEN sm.quantity ELSE 0 END) AS stock_dispatched_quantity
   FROM stock_movements sm
   GROUP BY sm.lot_id
 `;

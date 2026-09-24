@@ -190,6 +190,12 @@ export const orderConfirmationService = {
     if (active > 0) {
       throw companyScope.error(`${oc.oc_num} has ${active} production allocation(s); cancel them before it can be ${action}.`);
     }
+    const [[{ dispatches }]] = await connection.query(`
+      SELECT COUNT(DISTINCT d.id) AS dispatches FROM dispatches d
+      LEFT JOIN dispatch_items di ON di.dispatch_id = d.id
+      LEFT JOIN order_confirmation_items oci ON oci.id = di.order_confirmation_item_id
+      WHERE d.status <> 'cancelled' AND (d.order_confirmation_id = ? OR oci.order_confirmation_id = ?)`, [oc.id, oc.id]);
+    if (dispatches > 0) throw companyScope.error(`${oc.oc_num} has ${dispatches} dispatch(es), so it cannot be ${action}.`);
   },
 
   /**
@@ -212,10 +218,11 @@ export const orderConfirmationService = {
       const [[deps]] = await connection.query(`
         SELECT (SELECT COUNT(*) FROM order_item_production_allocations WHERE order_confirmation_id = ? AND status = 'active') AS allocations,
                (SELECT COUNT(*) FROM purchase_orders WHERE order_confirmation_id = ? AND deleted_at IS NULL AND status <> 'cancelled') AS purchase_orders,
-               (SELECT COUNT(*) FROM export_documents WHERE order_confirmation_id = ? AND deleted_at IS NULL) AS export_documents
-      `, [id, id, id]);
-      if (deps.allocations > 0 || deps.purchase_orders > 0 || deps.export_documents > 0) {
-        throw companyScope.error(`${oc.oc_num} cannot be cancelled: ${deps.allocations} production allocation(s), ${deps.purchase_orders} purchase order(s) and ${deps.export_documents} export document(s) depend on it.`);
+               (SELECT COUNT(*) FROM export_documents WHERE order_confirmation_id = ? AND deleted_at IS NULL) AS export_documents,
+               (SELECT COUNT(*) FROM dispatches WHERE order_confirmation_id = ? AND status <> 'cancelled') AS dispatches
+      `, [id, id, id, id]);
+      if (deps.allocations > 0 || deps.purchase_orders > 0 || deps.export_documents > 0 || deps.dispatches > 0) {
+        throw companyScope.error(`${oc.oc_num} cannot be cancelled: ${deps.allocations} production allocation(s), ${deps.purchase_orders} purchase order(s), ${deps.export_documents} export document(s) and ${deps.dispatches} dispatch(es) depend on it.`);
       }
       await connection.query(
         "UPDATE order_confirmations SET status = 'cancelled', cancelled_at = NOW(), cancelled_by = ?, cancellation_reason = ?, updated_by = ?, updated_at = NOW() WHERE id = ?",

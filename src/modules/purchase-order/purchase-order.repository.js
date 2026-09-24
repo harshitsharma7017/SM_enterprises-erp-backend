@@ -122,10 +122,20 @@ export const purchaseOrderRepository = {
       GROUP BY iei.purchase_order_item_id
     `, [id]);
     const receivedById = Object.fromEntries(received.map((r) => [r.purchase_order_item_id, Number(r.received)]));
+    // Quantity the mill shipped straight to the customer (posted direct dispatches).
+    const [direct] = await pool.query(`
+      SELECT di.purchase_order_item_id, SUM(di.quantity) AS direct_qty
+      FROM dispatch_items di JOIN dispatches d ON d.id = di.dispatch_id
+      JOIN purchase_order_items poi ON poi.id = di.purchase_order_item_id
+      WHERE poi.purchase_order_id = ? AND d.status = 'posted' AND d.dispatch_type = 'DIRECT_SUPPLIER_DISPATCH'
+      GROUP BY di.purchase_order_item_id
+    `, [id]);
+    const directById = Object.fromEntries(direct.map((r) => [r.purchase_order_item_id, Number(r.direct_qty)]));
     for (const item of items) {
       const ordered = Number(item.ordered_quantity ?? item.qty) || 0;
       item.received_quantity = receivedById[item.id] || 0;
-      item.pending_quantity = Math.max(ordered - item.received_quantity, 0);
+      item.direct_dispatched_quantity = directById[item.id] || 0;
+      item.pending_quantity = Math.max(ordered - item.received_quantity - item.direct_dispatched_quantity, 0);
     }
 
     po.items = items;
@@ -138,6 +148,13 @@ export const purchaseOrderRepository = {
       ORDER BY ie.id ASC
     `, [id]);
     po.receipts = receipts;
+
+    const [dispatches] = await pool.query(`
+      SELECT d.id, d.dispatch_no, d.dispatch_date, d.status, d.destination_name, b.company_name AS buyer_name
+      FROM dispatches d LEFT JOIN buyers b ON b.id = d.buyer_id
+      WHERE d.purchase_order_id = ? ORDER BY d.id
+    `, [id]);
+    po.direct_dispatches = dispatches;
 
     // Planning-origin lines: trace each back to plan → requirement → projection.
     if (po.origin !== 'order_confirmation') {

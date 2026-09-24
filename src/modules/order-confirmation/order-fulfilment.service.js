@@ -52,13 +52,24 @@ const itemFigures = (item, dispatched) => {
 
 /**
  * The order's lifecycle status: its stored status (draft / sent / cancelled)
- * or, once confirmed, its fulfilment — open until something is dispatched.
+ * or, once confirmed, its fulfilment from POSTED dispatches. Only lines that
+ * can be dispatched (a product and a quantity) count: fulfilled when every
+ * such line is fully dispatched, partially fulfilled once anything is.
  */
+const fulfilmentStatus = (trackable, fulfilled, dispatched) => {
+  if (trackable > 0 && fulfilled >= trackable) return 'fulfilled';
+  if (dispatched > 0) return 'partially_fulfilled';
+  return 'open';
+};
+
 export const orderStatusOf = (status, items) => {
   if (status !== 'confirmed') return status;
-  if (items.length > 0 && items.every((i) => i.fulfilment_status === 'fulfilled')) return 'fulfilled';
-  if (items.some((i) => i.fulfilment_status !== 'open')) return 'partially_fulfilled';
-  return 'open';
+  const trackable = items.filter((i) => i.product_id && micro(i.ordered_quantity) > 0);
+  return fulfilmentStatus(
+    trackable.length,
+    trackable.filter((i) => i.fulfilment_status === 'fulfilled').length,
+    items.filter((i) => micro(i.dispatched_quantity) > 0).length,
+  );
 };
 
 export const orderFulfilmentService = {
@@ -67,14 +78,16 @@ export const orderFulfilmentService = {
     const summaries = await orderFulfilmentRepository.findSummaries(rows.map((r) => r.id));
     const byId = Object.fromEntries(summaries.map((s) => [s.order_confirmation_id, s]));
     return rows.map((row) => {
-      const s = byId[row.id] || { items_count: 0, allocated_items_count: 0, produced_items_count: 0 };
+      const s = byId[row.id] || { items_count: 0, allocated_items_count: 0, produced_items_count: 0, trackable_items_count: 0, fulfilled_items_count: 0, dispatched_items_count: 0 };
       return {
         ...row,
-        // No dispatch exists yet, so a confirmed order is open.
-        order_status: row.status === 'confirmed' ? 'open' : row.status,
+        order_status: row.status === 'confirmed'
+          ? fulfilmentStatus(Number(s.trackable_items_count), Number(s.fulfilled_items_count), Number(s.dispatched_items_count))
+          : row.status,
         items_count: Number(s.items_count),
         allocated_items_count: Number(s.allocated_items_count),
         produced_items_count: Number(s.produced_items_count),
+        fulfilled_items_count: Number(s.fulfilled_items_count),
       };
     });
   },
@@ -92,6 +105,7 @@ export const orderFulfilmentService = {
     const items = rawItems.map((i) => itemFigures(i, dispatched[i.id]));
 
     const allocations = await orderFulfilmentRepository.findAllocations('a.order_confirmation_id = ?', [ocId]);
+    const dispatchLines = await orderFulfilmentRepository.findDispatchLines(ocId);
     const traces = {};
     for (const id of [...new Set(allocations.map((a) => a.processing_record_id))]) {
       traces[id] = await findProductionSource(id);
@@ -117,6 +131,7 @@ export const orderFulfilmentService = {
       order_status: orderStatusOf(oc.status, items),
       items,
       allocations: allocations.map((a) => ({ ...a, production: traces[a.processing_record_id] })),
+      dispatches: dispatchLines,
       finished_stock: finished,
     };
   },
@@ -190,6 +205,8 @@ export const orderFulfilmentService = {
     const allocation = await orderFulfilmentRepository.lockAllocation(connection, allocationId);
     if (!allocation || allocation.order_confirmation_id !== oc.id) throw { status: 404, message: 'Allocation not found' };
     if (allocation.status !== 'active') throw rejected('This allocation is already cancelled.');
+    const dispatched = await orderFulfilmentRepository.dispatchedOnAllocation(connection, allocation.order_confirmation_item_id, allocation.lot_id);
+    if (micro(dispatched) > 0) throw rejected('Material of this allocation has been dispatched, so it cannot be cancelled.');
     await orderFulfilmentRepository.setCancelled(connection, allocation.id, blank(reason) ? null : String(reason).trim(), userId);
   }),
 };

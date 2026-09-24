@@ -5,12 +5,19 @@ import { STOCK_BY_LOT } from '../inventory/stock-ledger.js';
  * Order fulfilment figures, all derived from records:
  *   ordered    = order_confirmation_items.qty (the existing order quantity)
  *   produced   = active production allocations (finished lots → the item)
- *   dispatched = dispatch records — none exist yet (see dispatchedByItem)
+ *   dispatched = POSTED dispatch lines of the item (stock or direct supplier dispatch)
  */
 const ACTIVE_ALLOCATED_BY_ITEM = `
   SELECT order_confirmation_item_id, SUM(quantity) AS allocated
   FROM order_item_production_allocations WHERE status = 'active'
   GROUP BY order_confirmation_item_id
+`;
+
+const DISPATCHED_BY_ITEM = `
+  SELECT di.order_confirmation_item_id, SUM(di.quantity) AS dispatched
+  FROM dispatch_items di JOIN dispatches d ON d.id = di.dispatch_id
+  WHERE d.status = 'posted' AND di.order_confirmation_item_id IS NOT NULL
+  GROUP BY di.order_confirmation_item_id
 `;
 
 const ACTIVE_ALLOCATED_BY_LOT = `
@@ -74,11 +81,50 @@ export const orderFulfilmentRepository = {
   },
 
   /**
-   * Dispatched quantity per order item. There is no dispatch module yet, so
-   * nothing is dispatched; a future dispatch (order → dispatch → dispatch
-   * items) plugs in here. Export documents are deliberately not counted.
+   * Dispatched quantity per order item: POSTED dispatch lines (finished stock,
+   * or direct supplier dispatch of a PO line raised from the item). Export
+   * documents are deliberately not counted.
    */
-  dispatchedByItem: async () => ({}),
+  dispatchedByItem: async (itemIds) => {
+    if (itemIds.length === 0) return {};
+    const [rows] = await pool.query(`
+      SELECT di.order_confirmation_item_id, SUM(di.quantity) AS dispatched
+      FROM dispatch_items di JOIN dispatches d ON d.id = di.dispatch_id
+      WHERE d.status = 'posted' AND di.order_confirmation_item_id IN (?)
+      GROUP BY di.order_confirmation_item_id
+    `, [itemIds]);
+    return Object.fromEntries(rows.map((r) => [r.order_confirmation_item_id, r.dispatched]));
+  },
+
+  /** Every dispatch line of an order (draft, posted and cancelled) with lot, location and destination. */
+  findDispatchLines: async (ocId) => {
+    const [rows] = await pool.query(`
+      SELECT di.id, di.dispatch_id, di.order_confirmation_item_id, di.lot_id, di.purchase_order_item_id, di.quantity, di.unit,
+             d.dispatch_no, d.dispatch_date, d.dispatch_type, d.status, d.destination_name, b.company_name AS buyer_name,
+             l.lot_no, loc.code AS location_code, po.po_num, sm.id AS stock_movement_id, sm.movement_no AS stock_movement_no,
+             COALESCE(u.decimal_places, 0) AS uom_decimal_places
+      FROM dispatch_items di
+      JOIN dispatches d ON d.id = di.dispatch_id
+      JOIN order_confirmation_items oci ON oci.id = di.order_confirmation_item_id
+      LEFT JOIN buyers b ON b.id = d.buyer_id
+      LEFT JOIN lots l ON l.id = di.lot_id
+      LEFT JOIN stock_locations loc ON loc.id = d.location_id
+      LEFT JOIN purchase_orders po ON po.id = d.purchase_order_id
+      LEFT JOIN uoms u ON u.id = di.uom_id
+      LEFT JOIN stock_movements sm ON sm.dispatch_item_id = di.id AND sm.movement_type = 'DISPATCH'
+      WHERE oci.order_confirmation_id = ?
+      ORDER BY d.id, di.id
+    `, [ocId]);
+    return rows;
+  },
+
+  /** Posted dispatched quantity of one lot for one order item (allocation → dispatch cap). */
+  dispatchedOnAllocation: async (executor, itemId, lotId) => {
+    const [[row]] = await executor.query(`
+      SELECT COALESCE(SUM(di.quantity), 0) AS dispatched FROM dispatch_items di JOIN dispatches d ON d.id = di.dispatch_id
+      WHERE d.status = 'posted' AND di.order_confirmation_item_id = ? AND di.lot_id = ?`, [itemId, lotId]);
+    return row.dispatched;
+  },
 
   findAllocations: async (where, params) => {
     const [rows] = await pool.query(`${ALLOCATION_SELECT} WHERE ${where} ORDER BY a.id`, params);
@@ -99,9 +145,13 @@ export const orderFulfilmentRepository = {
       SELECT oci.order_confirmation_id,
              COUNT(*) AS items_count,
              SUM(CASE WHEN COALESCE(al.allocated, 0) > 0 THEN 1 ELSE 0 END) AS allocated_items_count,
-             SUM(CASE WHEN oci.qty > 0 AND COALESCE(al.allocated, 0) >= oci.qty THEN 1 ELSE 0 END) AS produced_items_count
+             SUM(CASE WHEN oci.qty > 0 AND COALESCE(al.allocated, 0) >= oci.qty THEN 1 ELSE 0 END) AS produced_items_count,
+             SUM(CASE WHEN oci.product_id IS NOT NULL AND oci.qty > 0 THEN 1 ELSE 0 END) AS trackable_items_count,
+             SUM(CASE WHEN oci.product_id IS NOT NULL AND oci.qty > 0 AND COALESCE(dp.dispatched, 0) >= oci.qty THEN 1 ELSE 0 END) AS fulfilled_items_count,
+             SUM(CASE WHEN COALESCE(dp.dispatched, 0) > 0 THEN 1 ELSE 0 END) AS dispatched_items_count
       FROM order_confirmation_items oci
       LEFT JOIN (${ACTIVE_ALLOCATED_BY_ITEM}) al ON al.order_confirmation_item_id = oci.id
+      LEFT JOIN (${DISPATCHED_BY_ITEM}) dp ON dp.order_confirmation_item_id = oci.id
       WHERE oci.order_confirmation_id IN (?)
       GROUP BY oci.order_confirmation_id
     `, [ocIds]);

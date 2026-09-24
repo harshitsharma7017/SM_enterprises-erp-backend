@@ -201,6 +201,9 @@ export const inwardEntryService = {
       if (existing.entry_type !== 'grn') throw rejected('Legacy inward entries are read-only history.');
       if (existing.receipt_status !== 'draft') throw rejected(`Only a draft goods receipt can be posted (this one is ${existing.receipt_status}).`);
 
+      // Take the PO lock before any plain read: the transaction's snapshot must
+      // start after a concurrent GRN / direct dispatch of the same PO committed.
+      await inwardEntryRepository.lockPo(connection, existing.purchase_order_id);
       const saved = await inwardEntryRepository.findLines(connection, id);
       if (saved.length === 0) throw rejected('Add at least one line before posting.');
       const { po, lines } = await lockAndCheck(connection, existing.purchase_order_id, existing.company_id, saved.map((l) => ({

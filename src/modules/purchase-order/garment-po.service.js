@@ -332,6 +332,9 @@ export const garmentPoService = {
       if (await garmentPoRepository.countInwardEntries(connection, id) > 0) {
         throw rejected('Goods have been recorded against this purchase order, so it cannot be cancelled.');
       }
+      if (await garmentPoRepository.countDispatches(connection, id) > 0) {
+        throw rejected('Direct dispatches exist for this purchase order, so it cannot be cancelled.');
+      }
       await garmentPoRepository.setCancelled(connection, id, userId);
     });
     return purchaseOrderRepository.findById(id);
