@@ -25,7 +25,7 @@ const companyFilter = (column, value) => companyScope.filterSql(column, companyS
  * Balances: movements summed per company / location / lot / product / UOM,
  * then joined to the lot's traceability (width, supplier, GRN, PO).
  */
-const BALANCE_SELECT = `
+export const BALANCE_SELECT = `
   SELECT b.company_id, b.location_id, b.lot_id, b.product_id, b.uom_id, b.unit,
          b.quantity, b.received_quantity, b.last_movement_date, b.movements_count,
          CASE WHEN b.quantity > 0 THEN 'available' ELSE 'nil' END AS stock_status,

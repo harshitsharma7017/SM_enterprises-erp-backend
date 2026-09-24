@@ -291,6 +291,9 @@ const validateCommon = async (req, isUpdate = false) => {
   return errors;
 };
 
+/** The create validation, for a plain object (used by Excel import). */
+export const validateProductCreate = (body) => validateCommon({ body, params: {} }, false);
+
 export const productValidator = {
   validateStore: async (req, res, next) => {
     try {

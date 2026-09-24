@@ -41,6 +41,7 @@ import inventoryRoutes from './modules/inventory/inventory.routes.js';
 import productionRoutes from './modules/production/production.routes.js';
 import dispatchRoutes from './modules/dispatch/dispatch.routes.js';
 import barcodeRoutes from './modules/barcode/barcode.routes.js';
+import importRoutes from './modules/data-import/import.routes.js';
 import exportDocumentRoutes from './modules/export-document/export-document.routes.js';
 
 // Phase 21 & 22 Imports
@@ -109,6 +110,7 @@ app.use('/api/finance/proforma-invoices', proformaInvoiceRoutes);
 app.use('/api/finance/invoices', invoiceRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/imports', importRoutes);
 app.use('/api/user-management/company-profile', companyProfileRoutes);
 app.use('/api/user-management/users', userRoutes);
 app.use('/api/user-management', roleRoutes);

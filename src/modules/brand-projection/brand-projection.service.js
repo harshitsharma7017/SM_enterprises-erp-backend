@@ -55,8 +55,9 @@ export const brandProjectionService = {
     return { brands, products };
   },
 
-  create: async (data, items, userId) => {
-    const id = await inTransaction(async (connection) => {
+  // `connection`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, items, userId, { connection: external = null } = {}) => {
+    const work = async (connection) => {
       const financialYear = financialYearFor();
       await numberSeriesService.ensure(connection, SERIES.module, SERIES.prefix, financialYear);
       const projectionNo = await numberSeriesService.next(connection, SERIES.module, financialYear);
@@ -70,7 +71,9 @@ export const brandProjectionService = {
       });
       await brandProjectionRepository.replaceItems(connection, projectionId, items);
       return projectionId;
-    });
+    };
+    if (external) return work(external);
+    const id = await inTransaction(work);
     return brandProjectionRepository.findById(id);
   },
 

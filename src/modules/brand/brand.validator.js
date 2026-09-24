@@ -50,6 +50,9 @@ const middleware = (isUpdate) => async (req, res, next) => {
   }
 };
 
+/** The create validation, for a plain object (used by Excel import). */
+export const validateBrandCreate = (body) => validateCommon({ body, params: {} }, false);
+
 export const brandValidator = {
   validateStore: middleware(false),
   validateUpdate: middleware(true),

@@ -43,11 +43,12 @@ export const productService = {
     return (length * width) / 39.3701;
   },
 
-  create: async (data, userId) => {
+  // `external`: a caller-owned transaction (Excel import) — the caller commits / rolls back; only the new id is returned.
+  create: async (data, userId, { connection: external = null } = {}) => {
     let connection;
     try {
-      connection = await pool.getConnection();
-      await connection.beginTransaction();
+      connection = external || await pool.getConnection();
+      if (!external) await connection.beginTransaction();
 
       const payload = {
         company_id: Number(data.company_id),
@@ -80,15 +81,16 @@ export const productService = {
 
       await productService.syncIncentives(connection, productId, data.incentives || {});
       await productService.syncBomItems(connection, productId, data.bom || []);
+      if (external) return productId;
 
       await connection.commit();
 
       return await productRepository.findByIdIncludingRelations(productId);
     } catch (error) {
-      if (connection) await connection.rollback();
+      if (connection && !external) await connection.rollback();
       throw error;
     } finally {
-      if (connection) connection.release();
+      if (connection && !external) connection.release();
     }
   },
 

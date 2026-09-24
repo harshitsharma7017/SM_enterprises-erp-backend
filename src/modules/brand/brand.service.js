@@ -15,8 +15,10 @@ export const brandService = {
 
   findById: (id) => brandRepository.findById(id),
 
-  create: async (data, userId) => {
-    const id = await brandRepository.create({ ...toPayload(data), created_by: userId, updated_by: userId });
+  // `connection`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, userId, { connection = null } = {}) => {
+    const id = await brandRepository.create({ ...toPayload(data), created_by: userId, updated_by: userId }, connection || undefined);
+    if (connection) return id;
     return brandRepository.findById(id);
   },
 

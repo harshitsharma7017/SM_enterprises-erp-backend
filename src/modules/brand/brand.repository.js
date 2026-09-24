@@ -68,8 +68,8 @@ export const brandRepository = {
     return rows.length > 0;
   },
 
-  create: async (data) => {
-    const [result] = await pool.query(`
+  create: async (data, executor = pool) => {
+    const [result] = await executor.query(`
       INSERT INTO brands (company_id, code, name, status, created_by, updated_by, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
     `, [data.company_id, data.code, data.name, data.status, data.created_by, data.updated_by]);

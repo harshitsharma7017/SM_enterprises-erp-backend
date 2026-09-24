@@ -36,7 +36,7 @@ const sameUnit = (a, b) => String(a || '').trim().toUpperCase() === String(b || 
  *   to_produce  = ordered − produced, never < 0
  * Fulfilment follows dispatch; production status follows allocations.
  */
-const itemFigures = (item, dispatched) => {
+export const itemFigures = (item, dispatched) => {
   const ordered = micro(item.ordered_quantity);
   const produced = micro(item.produced_quantity);
   const shipped = micro(dispatched || 0);

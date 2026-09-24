@@ -31,7 +31,7 @@ const BARCODE_SELECT = `
   LEFT JOIN users u2 ON u2.id = b.retired_by
 `;
 
-const SCAN_SELECT = `
+export const SCAN_SELECT = `
   SELECT bs.*, cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
          l.lot_no, p.name AS product_name, loc.code AS location_code, us.name AS scanned_by_name,
          prev.scanned_at AS previous_scanned_at, uprev.name AS previous_scanned_by_name

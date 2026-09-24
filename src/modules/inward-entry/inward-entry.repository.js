@@ -45,7 +45,7 @@ export const DIRECT_DISPATCHED_BY_PO_LINE = `
  * product's UOM; OC lines whose product has no UOM fall back to the PO
  * line's text unit with whole-number precision (their PO qty is an integer).
  */
-const PO_LINE_SELECT = `
+export const PO_LINE_SELECT = `
   SELECT poi.id, poi.purchase_order_id, poi.sort_order, poi.product_id, poi.description, poi.order_confirmation_item_id,
          COALESCE(poi.ordered_quantity, poi.qty) AS ordered_quantity,
          COALESCE(rcv.received_qty, 0) AS received_quantity,

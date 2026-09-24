@@ -119,15 +119,63 @@ const colName = (index) => {
   return name;
 };
 
+// Typed cells (reports): { type: 'number' | 'date' | 'datetime', value }. Plain strings / numbers
+// keep their original behaviour (Inquiry export).
+const DECIMAL_RE = /^-?\d+(\.\d+)?$/;
+const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2})(?::(\d{2}))?)?$/;
+// Style indexes in the minimal styles part below (0 = default).
+const STYLE_DATE = 1;
+const STYLE_DATETIME = 2;
+
+/**
+ * A DECIMAL value exactly as the database returned it ("3000.500000"),
+ * written as an Excel number without going through a float: only trailing
+ * fraction zeros are dropped, nothing is rounded.
+ */
+const decimalText = (value) => {
+  const text = String(value).trim();
+  if (!DECIMAL_RE.test(text)) return null;
+  return text.includes('.') ? text.replace(/0+$/, '').replace(/\.$/, '') : text;
+};
+
+/** "YYYY-MM-DD[ HH:MM[:SS]]" → Excel serial (days since 1899-12-30; no time-zone shift). */
+export const excelSerial = (value) => {
+  const m = String(value).trim().match(DATE_RE);
+  if (!m) return null;
+  const [, y, mo, d, h = '0', mi = '0', sec = '0'] = m;
+  const days = (Date.UTC(Number(y), Number(mo) - 1, Number(d)) - Date.UTC(1899, 11, 30)) / 86400000;
+  if (!Number.isFinite(days)) return null;
+  const fraction = (Number(h) * 3600 + Number(mi) * 60 + Number(sec)) / 86400;
+  return String(fraction ? Number((days + fraction).toFixed(10)) : days);
+};
+
+const inlineString = (ref, value) => `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(value)}</t></is></c>`;
+
+const typedCell = (ref, cell) => {
+  if (cell.value === null || cell.value === undefined || cell.value === '') return '';
+  if (cell.type === 'number') {
+    const v = typeof cell.value === 'number' && Number.isFinite(cell.value) ? String(cell.value) : decimalText(cell.value);
+    return v === null ? inlineString(ref, cell.value) : `<c r="${ref}"><v>${v}</v></c>`;
+  }
+  if (cell.type === 'date' || cell.type === 'datetime') {
+    const v = excelSerial(cell.value);
+    return v === null ? inlineString(ref, cell.value) : `<c r="${ref}" s="${cell.type === 'date' ? STYLE_DATE : STYLE_DATETIME}"><v>${v}</v></c>`;
+  }
+  return inlineString(ref, cell.value);
+};
+
+const isTyped = (cell) => cell !== null && typeof cell === 'object' && 'type' in cell;
+
 const buildSheetXml = (rows) => {
   const rowsXml = rows.map((row, rIdx) => {
     const cellsXml = row.map((cell, cIdx) => {
       const ref = `${colName(cIdx)}${rIdx + 1}`;
+      if (isTyped(cell)) return typedCell(ref, cell);
       if (cell === null || cell === undefined || cell === '') return '';
       if (typeof cell === 'number' && Number.isFinite(cell)) {
         return `<c r="${ref}"><v>${cell}</v></c>`;
       }
-      return `<c r="${ref}" t="inlineStr"><is><t xml:space="preserve">${xmlEscape(cell)}</t></is></c>`;
+      return inlineString(ref, cell);
     }).join('');
     return `<row r="${rIdx + 1}">${cellsXml}</row>`;
   }).join('');
@@ -137,17 +185,34 @@ const buildSheetXml = (rows) => {
     `<sheetData>${rowsXml}</sheetData></worksheet>`;
 };
 
+// Only written when a date cell needs it: yyyy-mm-dd and yyyy-mm-dd hh:mm:ss (unambiguous in every locale).
+const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
+  `<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
+  `<numFmts count="2"><numFmt numFmtId="164" formatCode="yyyy-mm-dd"/><numFmt numFmtId="165" formatCode="yyyy-mm-dd hh:mm:ss"/></numFmts>` +
+  `<fonts count="1"><font><sz val="11"/><name val="Calibri"/></font></fonts>` +
+  `<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>` +
+  `<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>` +
+  `<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>` +
+  `<cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>` +
+  `<xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/>` +
+  `<xf numFmtId="165" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/></cellXfs>` +
+  `</styleSheet>`;
+
 /**
- * @param {{ sheetName?: string, rows: Array<Array<string|number|null>> }} params
+ * @param {{ sheetName?: string, rows: Array<Array<string|number|null|{type: string, value: any}>> }} params
+ *   Plain strings / numbers are written as before; typed cells ({ type: 'number' | 'date' |
+ *   'datetime' | 'text', value }) give exact decimals and real Excel dates.
  * @returns {Buffer}
  */
 export function writeSimpleXlsx({ sheetName = 'Sheet1', rows = [] }) {
+  const withStyles = rows.some((row) => row.some((cell) => isTyped(cell) && (cell.type === 'date' || cell.type === 'datetime')));
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
     `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
     `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
     `<Default Extension="xml" ContentType="application/xml"/>` +
     `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
     `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+    (withStyles ? `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` : '') +
     `</Types>`;
 
   const rootRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
@@ -162,6 +227,7 @@ export function writeSimpleXlsx({ sheetName = 'Sheet1', rows = [] }) {
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
     `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
+    (withStyles ? `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` : '') +
     `</Relationships>`;
 
   const sheet1 = buildSheetXml(rows);
@@ -171,7 +237,8 @@ export function writeSimpleXlsx({ sheetName = 'Sheet1', rows = [] }) {
     { name: '_rels/.rels', data: Buffer.from(rootRels, 'utf8') },
     { name: 'xl/workbook.xml', data: Buffer.from(workbook, 'utf8') },
     { name: 'xl/_rels/workbook.xml.rels', data: Buffer.from(workbookRels, 'utf8') },
-    { name: 'xl/worksheets/sheet1.xml', data: Buffer.from(sheet1, 'utf8') }
+    { name: 'xl/worksheets/sheet1.xml', data: Buffer.from(sheet1, 'utf8') },
+    ...(withStyles ? [{ name: 'xl/styles.xml', data: Buffer.from(STYLES_XML, 'utf8') }] : []),
   ];
 
   return buildZip(files);

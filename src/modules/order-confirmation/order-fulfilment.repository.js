@@ -7,13 +7,13 @@ import { STOCK_BY_LOT } from '../inventory/stock-ledger.js';
  *   produced   = active production allocations (finished lots → the item)
  *   dispatched = POSTED dispatch lines of the item (stock or direct supplier dispatch)
  */
-const ACTIVE_ALLOCATED_BY_ITEM = `
+export const ACTIVE_ALLOCATED_BY_ITEM = `
   SELECT order_confirmation_item_id, SUM(quantity) AS allocated
   FROM order_item_production_allocations WHERE status = 'active'
   GROUP BY order_confirmation_item_id
 `;
 
-const DISPATCHED_BY_ITEM = `
+export const DISPATCHED_BY_ITEM = `
   SELECT di.order_confirmation_item_id, SUM(di.quantity) AS dispatched
   FROM dispatch_items di JOIN dispatches d ON d.id = di.dispatch_id
   WHERE d.status = 'posted' AND di.order_confirmation_item_id IS NOT NULL

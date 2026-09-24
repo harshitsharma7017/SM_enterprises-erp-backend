@@ -171,6 +171,7 @@
     "outstanding.export",
     "report.view",
     "report.export",
+    "report.import",
     "user.view",
     "user.create",
     "user.edit",
@@ -351,6 +352,7 @@
       "outstanding.export",
       "report.view",
       "report.export",
+      "report.import",
       "user.view",
       "user.create",
       "user.edit",
@@ -540,7 +542,8 @@
       "outstanding.view",
       "outstanding.export",
       "report.view",
-      "report.export"
+      "report.export",
+      "report.import"
     ],
     "Merchandising & Manufacturing": [
       "category.view",

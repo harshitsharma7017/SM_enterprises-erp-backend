@@ -128,6 +128,13 @@ const middleware = (isUpdate) => async (req, res, next) => {
   }
 };
 
+/** The create validation, for a plain object (used by Excel import): errors + the normalised lines. */
+export const validateProjectionCreate = async (body) => {
+  const req = { body, params: {} };
+  const errors = await validateCommon(req, false);
+  return { errors, items: req.validatedItems || [] };
+};
+
 export const brandProjectionValidator = {
   validateStore: middleware(false),
   validateUpdate: middleware(true),
