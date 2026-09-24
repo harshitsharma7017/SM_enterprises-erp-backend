@@ -5,7 +5,7 @@ import { processingRepository } from './processing.repository.js';
 
 const pick = (query, keys) => Object.fromEntries(keys.map((k) => [k, query[k]]));
 const list = (res, result) => res.json({ success: true, data: result.rows, meta: { total: result.total, page: result.page, limit: result.limit } });
-const FILTERS = ['company_id', 'status', 'location_id', 'product_id', 'lot_id', 'lot', 'date_from', 'date_to', 'search', 'page', 'limit'];
+const FILTERS = ['company_id', 'status', 'output', 'location_id', 'product_id', 'lot_id', 'lot', 'date_from', 'date_to', 'search', 'page', 'limit'];
 
 // Wraps a handler so errors reach the global error handler.
 const handle = (fn) => async (req, res, next) => {
@@ -67,6 +67,11 @@ export const productionController = {
   updateRecord: handle(async (req, res) => {
     await processingService.update(req.params.id, req.body, req.user.id);
     await sendRecord(res, req.params.id, 200, () => 'Processing record updated.');
+  }),
+  outputFormData: handle(async (req, res) => res.json({ success: true, data: await processingService.outputFormData(req.params.id) })),
+  postOutput: handle(async (req, res) => {
+    await processingService.postOutput(req.params.id, req.body, req.user.id);
+    await sendRecord(res, req.params.id, 200, (r) => `Output of ${r.processing_no} posted to stock as lot ${r.output_lot_no} (${r.output_movement_no}).`);
   }),
   completeRecord: handle(async (req, res) => {
     await processingService.complete(req.params.id, req.body, req.user.id);

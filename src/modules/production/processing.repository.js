@@ -12,7 +12,11 @@ const RECORD_SELECT = `
          pu.code AS produced_uom_code, COALESCE(pu.decimal_places, 0) AS produced_uom_decimal_places,
          cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
          u1.name AS creator_name, u2.name AS completer_name,
-         (SELECT COUNT(*) FROM processing_record_items x WHERE x.processing_record_id = pr.id) AS lines_count
+         (SELECT COUNT(*) FROM processing_record_items x WHERE x.processing_record_id = pr.id) AS lines_count,
+         ol.id AS output_lot_id, ol.lot_no AS output_lot_no,
+         om.id AS output_movement_id, om.movement_no AS output_movement_no, om.movement_date AS output_movement_date,
+         oloc.id AS output_location_id, oloc.code AS output_location_code, oloc.name AS output_location_name,
+         uo.name AS output_poster_name
   FROM processing_records pr
   JOIN material_issues mi ON mi.id = pr.material_issue_id
   JOIN stock_locations loc ON loc.id = mi.location_id
@@ -24,6 +28,10 @@ const RECORD_SELECT = `
   LEFT JOIN companies cmp ON cmp.id = pr.company_id
   LEFT JOIN users u1 ON u1.id = pr.created_by
   LEFT JOIN users u2 ON u2.id = pr.completed_by
+  LEFT JOIN lots ol ON ol.processing_record_id = pr.id
+  LEFT JOIN stock_movements om ON om.processing_record_id = pr.id AND om.movement_type = 'PRODUCTION_OUTPUT'
+  LEFT JOIN stock_locations oloc ON oloc.id = om.location_id
+  LEFT JOIN users uo ON uo.id = pr.output_posted_by
 `;
 
 const ITEM_SELECT = `
@@ -49,6 +57,9 @@ export const processingRepository = {
       query += ' AND pr.status = ?';
       params.push(filters.status);
     }
+    // Output stock state: posted, or completed with output still to post.
+    if (filters.output === 'posted') query += ' AND pr.output_posted_at IS NOT NULL';
+    if (filters.output === 'pending') query += " AND pr.status = 'completed' AND pr.output_posted_at IS NULL";
     if (isSet(filters.location_id)) {
       query += ' AND mi.location_id = ?';
       params.push(Number(filters.location_id));
@@ -158,6 +169,29 @@ export const processingRepository = {
     await connection.query(
       'UPDATE processing_record_items SET consumed_quantity = ?, wastage_quantity = ?, balance_quantity = ?, remarks = ? WHERE id = ?',
       [data.consumed_quantity, data.wastage_quantity, data.balance_quantity, data.remarks, itemId]
+    );
+  },
+
+  findOutputLot: async (executor, id) => {
+    const [rows] = await executor.query('SELECT id, lot_no FROM lots WHERE processing_record_id = ?', [id]);
+    return rows[0] || null;
+  },
+
+  /** The finished-material lot: its own stock identity, traceable to the processing record. */
+  insertOutputLot: async (connection, data) => {
+    const [result] = await connection.query(`
+      INSERT INTO lots (company_id, lot_no, financial_year, source_type, processing_record_id, product_id, uom_id, unit,
+        quantity, received_date, status, created_by, updated_by, created_at, updated_at)
+      VALUES (?, ?, ?, 'production', ?, ?, ?, ?, ?, ?, 'received', ?, ?, NOW(), NOW())
+    `, [data.company_id, data.lot_no, data.financial_year, data.processing_record_id, data.product_id, data.uom_id,
+      data.unit, data.quantity, data.received_date, data.user_id, data.user_id]);
+    return result.insertId;
+  },
+
+  setOutputPosted: async (connection, id, userId) => {
+    await connection.query(
+      'UPDATE processing_records SET output_posted_at = NOW(), output_posted_by = ?, updated_by = ?, updated_at = NOW() WHERE id = ?',
+      [userId, userId, id]
     );
   },
 

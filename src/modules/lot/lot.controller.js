@@ -7,6 +7,7 @@ export const lotController = {
       const result = await lotService.findAll({
         search: req.query.search,
         status: req.query.status,
+        source_type: req.query.source_type,
         company_id: req.query.company_id,
         product_id: req.query.product_id,
         purchase_order_id: req.query.purchase_order_id,

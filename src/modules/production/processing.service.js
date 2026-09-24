@@ -4,8 +4,12 @@ import { materialIssueRepository } from './material-issue.repository.js';
 import { numberSeriesService, financialYearFor } from '../../services/number-series.service.js';
 import { quantity } from '../../services/quantity.service.js';
 import { companyScope } from '../../services/company-scope.service.js';
+import { inventoryRepository } from '../inventory/inventory.repository.js';
+import { nextMovementNo } from '../inventory/inventory.service.js';
 
 const PROCESSING_SERIES = { module: 'processing', prefix: 'PRC/' };
+// Finished-material lots share the lot series with received lots.
+const LOT_SERIES = { module: 'lot', prefix: 'LOT/' };
 const LINE_FIELDS = [['consumed_quantity', 'consumed'], ['wastage_quantity', 'wastage'], ['balance_quantity', 'balance']];
 
 const notFound = () => ({ status: 404, message: 'Processing record not found' });
@@ -105,6 +109,113 @@ const checkOutput = async (executor, companyId, data) => {
 
 export const processingService = {
   outputOptions: (companyId) => processingRepository.findOutputOptions(companyId),
+
+  /** What posting would put into stock (derived from the record) and the company's active locations. */
+  outputFormData: async (id) => {
+    const record = await processingRepository.findById(id);
+    if (!record) throw notFound();
+    const locations = await inventoryRepository.findLocations({ company_id: record.company_id, status: 'active', limit: 500 });
+    return {
+      processing_record_id: record.id,
+      processing_no: record.processing_no,
+      status: record.status,
+      output_posted_at: record.output_posted_at,
+      produced_product_id: record.produced_product_id,
+      produced_product_name: record.produced_product_name,
+      produced_uom_id: record.produced_uom_id,
+      produced_unit: record.produced_unit,
+      produced_quantity: record.produced_quantity,
+      locations: locations.rows,
+    };
+  },
+
+  /**
+   * Posts the produced quantity of a COMPLETED record to finished-material
+   * stock, exactly as recorded (no formula). Product, UOM, quantity and
+   * company come from the locked record; the client only chooses the
+   * destination location and date. Creates the output lot and one
+   * PRODUCTION_OUTPUT IN movement; posting twice fails on the posted flag,
+   * the lot's unique processing_record_id and the movement's unique key.
+   */
+  postOutput: async (id, data, userId) => {
+    try {
+      return await inTransaction(async (connection) => {
+        const record = await processingRepository.lock(connection, id);
+        if (!record) throw notFound();
+        if (record.status !== 'completed') throw rejected('Only a completed processing record can post its output to stock.');
+        const existingLot = await processingRepository.findOutputLot(connection, id);
+        if (record.output_posted_at || existingLot) {
+          throw rejected(`The output of ${record.processing_no} is already posted to stock${existingLot ? ` (lot ${existingLot.lot_no})` : ''}.`);
+        }
+        if (!blank(data.company_id) && Number(data.company_id) !== record.company_id) {
+          throw rejected(`${record.processing_no} belongs to a different company.`);
+        }
+        if (!record.produced_product_id) throw rejected('Select the produced product before posting output to stock.');
+        if (!record.produced_uom_id) throw rejected('Select the produced UOM before posting output to stock.');
+        if (record.produced_quantity === null || quantity.toMicro(record.produced_quantity) <= 0) {
+          throw rejected('The produced quantity must be greater than zero to post output to stock.');
+        }
+        const product = await processingRepository.findProduct(connection, record.produced_product_id);
+        if (!product || product.deleted_at) throw rejected('The produced product no longer exists.');
+        if (product.status !== 'active') throw rejected(`${product.name} is inactive.`);
+        if (product.company_id !== record.company_id) throw rejected(`${product.name} belongs to a different company.`);
+        const uom = await processingRepository.findUom(connection, record.produced_uom_id);
+        if (!uom || uom.deleted_at || uom.status !== 'active') throw rejected('The produced UOM is not an active UOM.');
+        const produced = String(Number(record.produced_quantity));
+        const precisionError = quantity.validate(produced, uom.decimal_places, 'Produced quantity');
+        if (precisionError) throw rejected(precisionError);
+
+        const location = await inventoryRepository.findLocation(connection, data.location_id);
+        if (!location) throw rejected('Stock location not found.');
+        if (location.company_id !== record.company_id) throw rejected(`Location ${location.code} belongs to a different company.`);
+        if (location.status !== 'active') throw rejected(`Location ${location.code} is inactive.`);
+        await companyScope.assertActiveCompany(record.company_id, connection);
+
+        const financialYear = financialYearFor(dateFor(data.movement_date));
+        await numberSeriesService.ensure(connection, LOT_SERIES.module, LOT_SERIES.prefix, financialYear);
+        const lotNo = await numberSeriesService.next(connection, LOT_SERIES.module, financialYear);
+        const lotId = await processingRepository.insertOutputLot(connection, {
+          company_id: record.company_id,
+          lot_no: lotNo,
+          financial_year: financialYear,
+          processing_record_id: record.id,
+          product_id: product.id,
+          uom_id: uom.id,
+          unit: uom.code,
+          quantity: produced,
+          received_date: data.movement_date,
+          user_id: userId,
+        });
+        const movement = await nextMovementNo(connection, data.movement_date);
+        await inventoryRepository.insertMovement(connection, {
+          company_id: record.company_id,
+          movement_no: movement.movementNo,
+          financial_year: movement.financialYear,
+          movement_date: data.movement_date,
+          movement_type: 'PRODUCTION_OUTPUT',
+          direction: 'in',
+          location_id: location.id,
+          lot_id: lotId,
+          product_id: product.id,
+          uom_id: uom.id,
+          unit: uom.code,
+          quantity: produced,
+          source_type: 'processing_record',
+          processing_record_id: record.id,
+          reason: null,
+          remarks: text(data.remarks),
+          created_by: userId,
+        });
+        await processingRepository.setOutputPosted(connection, id, userId);
+        return lotId;
+      });
+    } catch (error) {
+      if (error && error.code === 'ER_DUP_ENTRY' && /processing_record/.test(error.message)) {
+        throw rejected('This processing output is already posted to stock.');
+      }
+      throw error;
+    }
+  },
 
   /** Starts processing of an ISSUED material issue — one record per issue, lines copied from the issue. */
   create: async (data, userId) => {

@@ -9,7 +9,7 @@ export const SIGNED_QUANTITY = "CASE WHEN sm.direction = 'in' THEN sm.quantity E
 export const STOCK_BY_LOT = `
   SELECT sm.lot_id,
          SUM(${SIGNED_QUANTITY}) AS stock_quantity,
-         SUM(CASE WHEN sm.movement_type = 'QC_ACCEPTED_RECEIPT' THEN sm.quantity ELSE 0 END) AS stock_received_quantity,
+         SUM(CASE WHEN sm.movement_type IN ('QC_ACCEPTED_RECEIPT', 'PRODUCTION_OUTPUT') THEN sm.quantity ELSE 0 END) AS stock_received_quantity,
          SUM(CASE WHEN sm.movement_type = 'MATERIAL_ISSUE' THEN sm.quantity ELSE 0 END) AS stock_issued_quantity
   FROM stock_movements sm
   GROUP BY sm.lot_id

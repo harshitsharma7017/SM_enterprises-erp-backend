@@ -3,6 +3,8 @@ import { companyScope } from '../../services/company-scope.service.js';
 import { SIGNED_QUANTITY } from './stock-ledger.js';
 
 const isSet = (v) => v !== undefined && v !== null && v !== '';
+// An id filter only applies to a positive integer; anything else is ignored rather than reaching SQL as NaN.
+const isId = (v) => isSet(v) && Number.isInteger(Number(v)) && Number(v) > 0;
 
 const pageOf = (filters) => {
   const page = parseInt(filters.page, 10) > 0 ? parseInt(filters.page, 10) : 1;
@@ -29,6 +31,7 @@ const BALANCE_SELECT = `
          CASE WHEN b.quantity > 0 THEN 'available' ELSE 'nil' END AS stock_status,
          l.lot_no, l.width_inch, l.supplier_lot_no, l.received_date, l.supplier_id,
          l.inward_entry_id, l.purchase_order_id, l.quantity AS lot_quantity,
+         l.source_type AS lot_source_type, l.processing_record_id AS lot_processing_record_id, lpr.processing_no AS lot_processing_no,
          loc.code AS location_code, loc.name AS location_name,
          p.name AS product_name, p.item_group_code, p.material_type_id, mt.name AS material_type_name,
          s.company_name AS supplier_name, ie.inward_no, po.po_num, po.origin AS purchase_order_origin,
@@ -37,12 +40,13 @@ const BALANCE_SELECT = `
   FROM (
     SELECT sm.company_id, sm.location_id, sm.lot_id, sm.product_id, sm.uom_id, sm.unit,
            SUM(${SIGNED_QUANTITY}) AS quantity,
-           SUM(CASE WHEN sm.movement_type = 'QC_ACCEPTED_RECEIPT' THEN sm.quantity ELSE 0 END) AS received_quantity,
+           SUM(CASE WHEN sm.movement_type IN ('QC_ACCEPTED_RECEIPT', 'PRODUCTION_OUTPUT') THEN sm.quantity ELSE 0 END) AS received_quantity,
            MAX(sm.movement_date) AS last_movement_date, COUNT(*) AS movements_count
     FROM stock_movements sm
     GROUP BY sm.company_id, sm.location_id, sm.lot_id, sm.product_id, sm.uom_id, sm.unit
   ) b
   JOIN lots l ON l.id = b.lot_id
+  LEFT JOIN processing_records lpr ON lpr.id = l.processing_record_id
   JOIN stock_locations loc ON loc.id = b.location_id
   JOIN products p ON p.id = b.product_id
   LEFT JOIN material_types mt ON mt.id = p.material_type_id
@@ -55,7 +59,8 @@ const BALANCE_SELECT = `
 
 /** Every movement with its running balance per lot + location (computed over ALL movements, before filtering). */
 const MOVEMENT_SELECT = `
-  SELECT m.*, l.lot_no, l.width_inch, l.inward_entry_id, l.purchase_order_id,
+  SELECT m.*, l.lot_no, l.width_inch, l.inward_entry_id, l.purchase_order_id, l.source_type AS lot_source_type,
+         prc.processing_no, prc.material_issue_id AS output_material_issue_id,
          loc.code AS location_code, loc.name AS location_name,
          p.name AS product_name, p.item_group_code,
          qi.qc_no, mi.id AS material_issue_id, mi.issue_no, mi.job_reference, ie.inward_no, po.po_num, po.origin AS purchase_order_origin, s.company_name AS supplier_name,
@@ -75,6 +80,7 @@ const MOVEMENT_SELECT = `
   LEFT JOIN quality_inspections qi ON qi.id = m.quality_inspection_id
   LEFT JOIN material_issue_items mii ON mii.id = m.material_issue_item_id
   LEFT JOIN material_issues mi ON mi.id = mii.material_issue_id
+  LEFT JOIN processing_records prc ON prc.id = m.processing_record_id
   LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
   LEFT JOIN purchase_orders po ON po.id = l.purchase_order_id
   LEFT JOIN suppliers s ON s.id = l.supplier_id
@@ -123,7 +129,7 @@ export const inventoryRepository = {
       ['b.product_id', filters.product_id], ['p.material_type_id', filters.material_type_id],
       ['b.lot_id', filters.lot_id], ['l.supplier_id', filters.supplier_id], ['b.location_id', filters.location_id],
     ]) {
-      if (isSet(value)) {
+      if (isId(value)) {
         query += ` AND ${column} = ?`;
         params.push(Number(value));
       }
@@ -131,6 +137,10 @@ export const inventoryRepository = {
     if (isSet(filters.lot)) {
       query += ' AND l.lot_no LIKE ?';
       params.push(`%${filters.lot}%`);
+    }
+    if (['grn', 'production'].includes(filters.lot_source)) {
+      query += ' AND l.source_type = ?';
+      params.push(filters.lot_source);
     }
     if (isSet(filters.date_from)) {
       query += ' AND l.received_date >= ?';
@@ -141,7 +151,7 @@ export const inventoryRepository = {
       params.push(filters.date_to);
     }
     if (filters.search) {
-      const columns = ['l.lot_no', 'l.supplier_lot_no', 'p.name', 'p.item_group_code', 's.company_name', 'ie.inward_no', 'po.po_num', 'loc.code', 'loc.name'];
+      const columns = ['l.lot_no', 'l.supplier_lot_no', 'p.name', 'p.item_group_code', 's.company_name', 'ie.inward_no', 'po.po_num', 'lpr.processing_no', 'loc.code', 'loc.name'];
       query += ` AND (${columns.map((c) => `${c} LIKE ?`).join(' OR ')})`;
       params.push(...columns.map(() => `%${filters.search}%`));
     }
@@ -176,7 +186,7 @@ export const inventoryRepository = {
       WHERE 1 = 1`;
     const params = [];
     for (const [column, value] of [['b.product_id', filters.product_id], ['p.material_type_id', filters.material_type_id], ['b.location_id', filters.location_id]]) {
-      if (isSet(value)) {
+      if (isId(value)) {
         query += ` AND ${column} = ?`;
         params.push(Number(value));
       }
@@ -201,17 +211,17 @@ export const inventoryRepository = {
   findMovements: async (filters = {}) => {
     let query = `${MOVEMENT_SELECT} WHERE 1 = 1`;
     const params = [];
-    for (const [column, value] of [['m.product_id', filters.product_id], ['m.lot_id', filters.lot_id], ['m.location_id', filters.location_id], ['m.quality_inspection_id', filters.quality_inspection_id]]) {
-      if (isSet(value)) {
+    for (const [column, value] of [['m.product_id', filters.product_id], ['m.lot_id', filters.lot_id], ['m.location_id', filters.location_id], ['m.quality_inspection_id', filters.quality_inspection_id], ['m.processing_record_id', filters.processing_record_id]]) {
+      if (isId(value)) {
         query += ` AND ${column} = ?`;
         params.push(Number(value));
       }
     }
-    if (['QC_ACCEPTED_RECEIPT', 'STOCK_ADJUSTMENT', 'MATERIAL_ISSUE'].includes(filters.movement_type)) {
+    if (['QC_ACCEPTED_RECEIPT', 'STOCK_ADJUSTMENT', 'MATERIAL_ISSUE', 'PRODUCTION_OUTPUT'].includes(filters.movement_type)) {
       query += ' AND m.movement_type = ?';
       params.push(filters.movement_type);
     }
-    if (['quality_inspection', 'stock_adjustment', 'material_issue'].includes(filters.source_type)) {
+    if (['quality_inspection', 'stock_adjustment', 'material_issue', 'processing_record'].includes(filters.source_type)) {
       query += ' AND m.source_type = ?';
       params.push(filters.source_type);
     }
@@ -220,8 +230,8 @@ export const inventoryRepository = {
       params.push(`%${filters.lot}%`);
     }
     if (isSet(filters.source)) {
-      query += ' AND (qi.qc_no LIKE ? OR mi.issue_no LIKE ? OR ie.inward_no LIKE ? OR po.po_num LIKE ?)';
-      params.push(...Array(4).fill(`%${filters.source}%`));
+      query += ' AND (qi.qc_no LIKE ? OR mi.issue_no LIKE ? OR prc.processing_no LIKE ? OR ie.inward_no LIKE ? OR po.po_num LIKE ?)';
+      params.push(...Array(5).fill(`%${filters.source}%`));
     }
     if (isSet(filters.date_from)) {
       query += ' AND m.movement_date >= ?';
@@ -232,7 +242,7 @@ export const inventoryRepository = {
       params.push(filters.date_to);
     }
     if (filters.search) {
-      const columns = ['m.movement_no', 'l.lot_no', 'p.name', 'qi.qc_no', 'mi.issue_no', 'mi.job_reference', 'm.reason', 'loc.code'];
+      const columns = ['m.movement_no', 'l.lot_no', 'p.name', 'qi.qc_no', 'mi.issue_no', 'mi.job_reference', 'prc.processing_no', 'm.reason', 'loc.code'];
       query += ` AND (${columns.map((c) => `${c} LIKE ?`).join(' OR ')})`;
       params.push(...columns.map(() => `%${filters.search}%`));
     }
@@ -278,7 +288,7 @@ export const inventoryRepository = {
       SELECT l.*, ie.receipt_status, ie.entry_type, ie.deleted_at AS grn_deleted_at,
              p.company_id AS product_company_id, COALESCE(u.decimal_places, 0) AS uom_decimal_places
       FROM lots l
-      JOIN inward_entries ie ON ie.id = l.inward_entry_id
+      LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
       LEFT JOIN products p ON p.id = l.product_id
       LEFT JOIN uoms u ON u.id = l.uom_id
       WHERE l.id = ? FOR UPDATE OF l`, [lotId]);
@@ -302,7 +312,7 @@ export const inventoryRepository = {
   lotTotals: async (executor, lotId, locationId = null) => {
     const [[row]] = await executor.query(`
       SELECT COALESCE(SUM(${SIGNED_QUANTITY}), 0) AS stock_quantity,
-             COALESCE(SUM(CASE WHEN sm.movement_type = 'QC_ACCEPTED_RECEIPT' THEN sm.quantity ELSE 0 END), 0) AS received_quantity,
+             COALESCE(SUM(CASE WHEN sm.movement_type IN ('QC_ACCEPTED_RECEIPT', 'PRODUCTION_OUTPUT') THEN sm.quantity ELSE 0 END), 0) AS received_quantity,
              COALESCE(SUM(CASE WHEN sm.location_id = ? THEN ${SIGNED_QUANTITY} ELSE 0 END), 0) AS location_quantity,
              COALESCE(SUM(CASE WHEN sm.location_id = ? THEN 1 ELSE 0 END), 0) AS location_movements,
              COALESCE(SUM(CASE WHEN sm.movement_type = 'STOCK_ADJUSTMENT' THEN -${SIGNED_QUANTITY} ELSE 0 END), 0) AS adjusted_out_quantity
@@ -315,13 +325,14 @@ export const inventoryRepository = {
     const [result] = await connection.query(`
       INSERT INTO stock_movements (
         company_id, movement_no, financial_year, movement_date, movement_type, direction, location_id, lot_id,
-        product_id, uom_id, unit, quantity, source_type, quality_inspection_id, material_issue_item_id, reason, remarks,
-        created_by, created_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+        product_id, uom_id, unit, quantity, source_type, quality_inspection_id, material_issue_item_id, processing_record_id,
+        reason, remarks, created_by, created_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
     `, [
       data.company_id, data.movement_no, data.financial_year, data.movement_date, data.movement_type, data.direction,
       data.location_id, data.lot_id, data.product_id, data.uom_id, data.unit, data.quantity, data.source_type,
-      data.quality_inspection_id ?? null, data.material_issue_item_id ?? null, data.reason, data.remarks, data.created_by,
+      data.quality_inspection_id ?? null, data.material_issue_item_id ?? null, data.processing_record_id ?? null,
+      data.reason, data.remarks, data.created_by,
     ]);
     return result.insertId;
   },

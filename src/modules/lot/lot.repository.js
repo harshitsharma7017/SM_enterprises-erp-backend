@@ -10,6 +10,7 @@ const SELECT = `
          po.po_num, po.origin AS purchase_order_origin, ie.inward_no, ie.receipt_status,
          u.code AS uom_code, COALESCE(u.decimal_places, 0) AS uom_decimal_places,
          cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
+         lpr.processing_no, lpr.material_issue_id AS production_material_issue_id,
          COALESCE(qt.claimed_quantity, 0) AS qc_claimed_quantity,
          COALESCE(qt.inspected_quantity, 0) AS qc_inspected_quantity,
          COALESCE(qt.accepted_quantity, 0) AS qc_accepted_quantity,
@@ -28,6 +29,7 @@ const SELECT = `
   LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
   LEFT JOIN uoms u ON u.id = l.uom_id
   LEFT JOIN companies cmp ON cmp.id = l.company_id
+  LEFT JOIN processing_records lpr ON lpr.id = l.processing_record_id
   LEFT JOIN (${QC_TOTALS_BY_LOT}) qt ON qt.lot_id = l.id
   LEFT JOIN (${RETURN_TOTALS_BY_LOT}) rt ON rt.lot_id = l.id
   LEFT JOIN (${STOCK_BY_LOT}) st ON st.lot_id = l.id
@@ -56,14 +58,50 @@ export const findLotTrace = async (lotId) => {
   return trace || null;
 };
 
+/**
+ * Where a finished-material (production) lot came from: processing record →
+ * material issue → the issued source lots, each with its own lot trace
+ * (GRN → PO → supplier → OC or plan/requirement/projection).
+ */
+export const findProductionSource = async (processingRecordId) => {
+  const [[record]] = await pool.query(`
+    SELECT pr.id AS processing_record_id, pr.processing_no, pr.status, pr.start_date, pr.completion_date,
+           pr.produced_quantity, pr.produced_unit, mi.id AS material_issue_id, mi.issue_no, mi.issue_date, mi.job_reference
+    FROM processing_records pr JOIN material_issues mi ON mi.id = pr.material_issue_id
+    WHERE pr.id = ?`, [processingRecordId]);
+  if (!record) return null;
+  const [sources] = await pool.query(`
+    SELECT pri.lot_id, pri.issued_quantity, pri.consumed_quantity, pri.unit, l.lot_no, l.width_inch, l.supplier_lot_no,
+           l.inward_entry_id, l.purchase_order_id, ie.inward_no, po.po_num, po.origin AS purchase_order_origin,
+           s.company_name AS supplier_name, p.name AS product_name, p.item_group_code,
+           COALESCE(u.decimal_places, 0) AS uom_decimal_places,
+           sm.id AS issue_movement_id, sm.movement_no AS issue_movement_no
+    FROM processing_record_items pri
+    JOIN lots l ON l.id = pri.lot_id
+    LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
+    LEFT JOIN purchase_orders po ON po.id = l.purchase_order_id
+    LEFT JOIN suppliers s ON s.id = l.supplier_id
+    LEFT JOIN products p ON p.id = pri.product_id
+    LEFT JOIN uoms u ON u.id = pri.uom_id
+    LEFT JOIN stock_movements sm ON sm.material_issue_item_id = pri.material_issue_item_id AND sm.movement_type = 'MATERIAL_ISSUE'
+    WHERE pri.processing_record_id = ?
+    ORDER BY pri.id`, [processingRecordId]);
+  record.sources = await Promise.all(sources.map(async (s) => ({ ...s, trace: await findLotTrace(s.lot_id) })));
+  return record;
+};
+
 export const lotRepository = {
-  findAll: async ({ search, status, company_id, product_id, purchase_order_id, inward_entry_id, page = 1, limit = 15 }) => {
+  findAll: async ({ search, status, source_type, company_id, product_id, purchase_order_id, inward_entry_id, page = 1, limit = 15 }) => {
     let query = `${SELECT} WHERE 1 = 1`;
     const params = [];
     if (search) {
-      query += ' AND (l.lot_no LIKE ? OR l.supplier_lot_no LIKE ? OR p.name LIKE ? OR po.po_num LIKE ? OR ie.inward_no LIKE ?)';
+      query += ' AND (l.lot_no LIKE ? OR l.supplier_lot_no LIKE ? OR p.name LIKE ? OR po.po_num LIKE ? OR ie.inward_no LIKE ? OR lpr.processing_no LIKE ?)';
       const term = `%${search}%`;
-      params.push(term, term, term, term, term);
+      params.push(term, term, term, term, term, term);
+    }
+    if (source_type === 'grn' || source_type === 'production') {
+      query += ' AND l.source_type = ?';
+      params.push(source_type);
     }
     if (status === 'received' || status === 'cancelled') {
       query += ' AND l.status = ?';
@@ -115,6 +153,7 @@ export const lotRepository = {
       ORDER BY mi.id
     `, [id]);
     lot.material_issues = issues;
+    lot.production = lot.processing_record_id ? await findProductionSource(lot.processing_record_id) : null;
     return lot;
   },
 };

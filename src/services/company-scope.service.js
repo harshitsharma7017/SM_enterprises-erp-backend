@@ -20,6 +20,9 @@ const MASTER_USAGE = {
     ['inward_entry_items', 'product_id', 'inward_entries', 'inward_entry_id'],
     ['export_document_items', 'product_id', 'export_documents', 'export_document_id'],
     ['brand_projection_items', 'product_id', 'brand_projections', 'brand_projection_id'],
+    ['lots', 'product_id', 'lots', null],
+    ['material_issue_items', 'product_id', 'material_issues', 'material_issue_id'],
+    ['processing_records', 'produced_product_id', 'processing_records', null],
   ],
   suppliers: [
     ['inquiry_items', 'supplier_id', 'inquiries', 'inquiry_id'],

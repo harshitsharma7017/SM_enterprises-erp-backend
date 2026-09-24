@@ -27,5 +27,8 @@ router.get('/processing/:id', requirePermission('processing.view'), productionCo
 router.post('/processing', requirePermission('processing.create'), validate(productionValidator.processingCreate), productionController.createRecord);
 router.put('/processing/:id', requirePermission('processing.edit'), validate(productionValidator.processingUpdate), productionController.updateRecord);
 router.post('/processing/:id/complete', requirePermission('processing.complete'), validate(productionValidator.processingComplete), productionController.completeRecord);
+// Finished material: post the recorded output of a completed record to stock (explicit, once).
+router.get('/processing/:id/output-form-data', requirePermission('processing.post'), productionController.outputFormData);
+router.post('/processing/:id/post-output', requirePermission('processing.post'), validate(productionValidator.processingPostOutput), productionController.postOutput);
 
 export default router;

@@ -49,4 +49,12 @@ export const productionValidator = {
   }),
 
   processingComplete: Joi.object({ completion_date: dateString.required() }),
+
+  // Product, UOM, quantity and company come from the record — never from the client.
+  processingPostOutput: Joi.object({
+    location_id: Joi.number().integer().positive().required(),
+    movement_date: dateString.required(),
+    company_id: optionalId,
+    remarks: Joi.string().max(2000).allow(null, ''),
+  }),
 };

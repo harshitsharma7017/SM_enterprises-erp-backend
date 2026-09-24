@@ -4,8 +4,8 @@ import { inventoryRepository } from './inventory.repository.js';
 const pick = (query, keys) => Object.fromEntries(keys.map((k) => [k, query[k]]));
 const list = (res, result) => res.json({ success: true, data: result.rows, meta: { total: result.total, page: result.page, limit: result.limit } });
 
-const STOCK_FILTERS = ['company_id', 'product_id', 'material_type_id', 'lot_id', 'lot', 'supplier_id', 'location_id', 'stock_status', 'date_from', 'date_to', 'search', 'page', 'limit'];
-const LEDGER_FILTERS = ['company_id', 'product_id', 'lot_id', 'lot', 'location_id', 'quality_inspection_id', 'movement_type', 'source_type', 'source', 'date_from', 'date_to', 'search', 'page', 'limit'];
+const STOCK_FILTERS = ['company_id', 'product_id', 'material_type_id', 'lot_id', 'lot', 'lot_source', 'supplier_id', 'location_id', 'stock_status', 'date_from', 'date_to', 'search', 'page', 'limit'];
+const LEDGER_FILTERS = ['company_id', 'product_id', 'lot_id', 'lot', 'location_id', 'quality_inspection_id', 'processing_record_id', 'movement_type', 'source_type', 'source', 'date_from', 'date_to', 'search', 'page', 'limit'];
 
 export const inventoryController = {
   // GET /api/inventory/stock — lot balances per location

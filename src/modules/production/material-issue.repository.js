@@ -119,7 +119,7 @@ export const materialIssueRepository = {
       SELECT l.*, ie.receipt_status, ie.entry_type, ie.deleted_at AS grn_deleted_at,
              p.company_id AS product_company_id, COALESCE(u.decimal_places, 0) AS uom_decimal_places
       FROM lots l
-      JOIN inward_entries ie ON ie.id = l.inward_entry_id
+      LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
       LEFT JOIN products p ON p.id = l.product_id
       LEFT JOIN uoms u ON u.id = l.uom_id
       WHERE l.id = ?`, [lotId]);

@@ -1,6 +1,6 @@
 import { pool } from '../../config/database.js';
 import { inventoryRepository } from './inventory.repository.js';
-import { lotRepository, findLotTrace } from '../lot/lot.repository.js';
+import { lotRepository, findLotTrace, findProductionSource } from '../lot/lot.repository.js';
 import { numberSeriesService, financialYearFor } from '../../services/number-series.service.js';
 import { quantity } from '../../services/quantity.service.js';
 import { companyScope } from '../../services/company-scope.service.js';
@@ -33,11 +33,14 @@ const blank = (v) => v === undefined || v === null || String(v).trim() === '';
 const text = (v) => (blank(v) ? null : String(v).trim());
 const sameId = (a, b) => (a === null || a === undefined ? null : Number(a)) === (b === null || b === undefined ? null : Number(b));
 
-/** The lot must be a received lot of a posted GRN whose product belongs to the lot's company. */
+/**
+ * The lot must be a received lot — of a posted GRN, or a production output
+ * lot — whose product belongs to the lot's company.
+ */
 export const checkLot = (lot) => {
   if (!lot) throw rejected('Lot not found.');
   if (lot.status !== 'received') throw rejected(`Lot ${lot.lot_no} is ${lot.status}.`);
-  if (lot.entry_type !== 'grn' || lot.grn_deleted_at || lot.receipt_status !== 'posted') {
+  if (lot.source_type !== 'production' && (lot.entry_type !== 'grn' || lot.grn_deleted_at || lot.receipt_status !== 'posted')) {
     throw rejected(`The goods receipt of lot ${lot.lot_no} is not posted.`);
   }
   if (lot.product_company_id !== lot.company_id) {
@@ -86,6 +89,9 @@ export const inventoryService = {
     const movement = await inventoryRepository.findMovement(id);
     if (!movement) return null;
     movement.trace = await findLotTrace(movement.lot_id);
+    // Finished material: output → processing → material issue → source lots.
+    const [[lot]] = await pool.query('SELECT processing_record_id FROM lots WHERE id = ?', [movement.lot_id]);
+    movement.production = lot?.processing_record_id ? await findProductionSource(lot.processing_record_id) : null;
     return movement;
   },
 
@@ -169,7 +175,8 @@ export const inventoryService = {
    * Restricted correction of an EXISTING lot balance at a location (reason
    * required). OUT may not take the balance below zero; IN may only restore
    * stock earlier adjustments took out (never material issued to production)
-   * — a lot's stock never exceeds the QC-accepted quantity posted for it.
+   * — a lot's stock never exceeds what was received into it (QC-accepted
+   * quantity, or the production output of a finished-material lot).
    * This is not an opening-balance mechanism.
    */
   adjust: async (data, userId) => inTransaction(async (connection) => {

@@ -154,6 +154,7 @@ export const qualityControlService = {
   create: async (data, userId) => {
     const ref = await qualityControlRepository.findLotRef(data.lot_id);
     if (!ref) throw rejected('Lot not found.');
+    if (!ref.inward_entry_id) throw rejected('Quality inspection applies to received (GRN) lots only.');
     return inTransaction(async (connection) => {
       await qualityControlRepository.lockGrnAndLot(connection, ref.inward_entry_id, ref.id);
       const src = await qualityControlRepository.findLotSource(connection, ref.id);
