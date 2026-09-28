@@ -119,7 +119,7 @@ npm run seed:number-series
 
 ### 7. Seed the dropdown lookups
 
-Starting values for calculation bases, GST rates, price bands, countries / states / cities, currencies, ports, incoterms, payment terms, shipment methods, designations, supplier types and markup presets — ported from the original ERP's seeders (`src/config/lookup-seed.json`). Without it, several forms have empty dropdowns and an Agent cannot be saved (Calculation Basis is required). Insert-only: re-running never duplicates or overwrites edited values.
+Starting values for calculation bases, GST rates, price bands, countries / states / cities, currencies, ports, incoterms, payment terms, shipment methods, designations, supplier types, markup presets and a starter "Standard Format" order format — ported from the original ERP's seeders (`src/config/lookup-seed.json`). Without it, several forms have empty dropdowns and an Agent cannot be saved (Calculation Basis is required). Insert-only: re-running never duplicates or overwrites edited values.
 
 ```bash
 npm run seed:lookups

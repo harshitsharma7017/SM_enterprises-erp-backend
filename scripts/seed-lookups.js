@@ -6,9 +6,10 @@ import { pool } from '../src/config/database.js';
 /**
  * Starting values for the dropdown lookups — calculation bases, GST rates,
  * price bands, countries / states / cities, currencies, ports, incoterms,
- * payment terms, shipment methods, designations, supplier types and markup
- * presets. Ported from the original ERP's LookupSeeder, GeoSeeder,
- * SupplierLookupSeeder and DefaultMarkupSeeder (src/config/lookup-seed.json).
+ * payment terms, shipment methods, designations, supplier types, markup
+ * presets and a starter Order Format. Ported from the original ERP's
+ * LookupSeeder, GeoSeeder, SupplierLookupSeeder, DefaultMarkupSeeder and
+ * DocumentFormatSeeder (src/config/lookup-seed.json).
  *
  * Run after the migrations (payment_terms.has_split comes from 038).
  *
@@ -69,6 +70,27 @@ async function run() {
       await insert('default_markups', `INSERT INTO default_markups (name, markup_percent, status, created_at, updated_at)
         SELECT ?, ?, 'active', NOW(), NOW() FROM DUAL
         WHERE NOT EXISTS (SELECT 1 FROM default_markups WHERE name = ? AND deleted_at IS NULL)`, [m.name, m.markup_percent, m.name]);
+    }
+
+    // One ready-to-use Order Format (the original's DocumentFormatSeeder): every standard
+    // column on, the six common units. Skipped when a format of that name exists.
+    for (const f of seed.order_formats || []) {
+      const [[existing]] = await connection.query('SELECT id FROM document_formats WHERE name = ?', [f.name]);
+      if (existing) continue;
+      const [res] = await connection.query(
+        "INSERT INTO document_formats (name, module, status, allow_multiple_colours, created_at, updated_at) VALUES (?, ?, 'active', 0, NOW(), NOW())",
+        [f.name, f.module]
+      );
+      counts.document_formats = (counts.document_formats || 0) + 1;
+      for (const [i, col] of f.columns.entries()) {
+        await connection.query(
+          'INSERT INTO document_format_columns (document_format_id, `key`, label, is_enabled, is_mandatory, is_custom, print_only, sub_columns, sort_order) VALUES (?, ?, ?, 1, 0, 0, ?, ?, ?)',
+          [res.insertId, col.key, col.label, col.print_only ? 1 : 0, '[]', i]
+        );
+      }
+      for (const [i, unit] of f.units.entries()) {
+        await connection.query('INSERT INTO document_format_units (document_format_id, name, sort_order) VALUES (?, ?, ?)', [res.insertId, unit, i]);
+      }
     }
 
     // Country → state → city (countries above must exist first).

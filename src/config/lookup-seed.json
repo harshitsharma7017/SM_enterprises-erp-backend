@@ -1,5 +1,5 @@
 {
- "_source": "Ported from guru-traders-erp database/seeders: LookupSeeder, GeoSeeder, SupplierLookupSeeder (designations), DefaultMarkupSeeder. Starting values, not the client's final data.",
+ "_source": "Ported from guru-traders-erp database/seeders: LookupSeeder, GeoSeeder, SupplierLookupSeeder (designations), DefaultMarkupSeeder, DocumentFormatSeeder. Starting values, not the client's final data.",
  "price_bands": [
   {
    "code": "AA",
@@ -2204,5 +2204,61 @@
     ]
    }
   ]
- }
+ },
+ "order_formats": [
+  {
+   "name": "Standard Format",
+   "module": "po",
+   "columns": [
+    {
+     "key": "supplier",
+     "label": "Supplier",
+     "print_only": false
+    },
+    {
+     "key": "design_no",
+     "label": "Design No. / Name",
+     "print_only": false
+    },
+    {
+     "key": "product",
+     "label": "Product Name",
+     "print_only": false
+    },
+    {
+     "key": "colour",
+     "label": "Colour",
+     "print_only": false
+    },
+    {
+     "key": "size",
+     "label": "Size",
+     "print_only": false
+    },
+    {
+     "key": "unit",
+     "label": "Unit",
+     "print_only": false
+    },
+    {
+     "key": "price",
+     "label": "Price",
+     "print_only": false
+    },
+    {
+     "key": "image",
+     "label": "Image",
+     "print_only": true
+    }
+   ],
+   "units": [
+    "PCS",
+    "SET",
+    "MTR",
+    "KGS",
+    "PAIR",
+    "DOZ"
+   ]
+  }
+ ]
 }
