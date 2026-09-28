@@ -16,7 +16,8 @@ const RECORD_SELECT = `
          ol.id AS output_lot_id, ol.lot_no AS output_lot_no,
          om.id AS output_movement_id, om.movement_no AS output_movement_no, om.movement_date AS output_movement_date,
          oloc.id AS output_location_id, oloc.code AS output_location_code, oloc.name AS output_location_name,
-         uo.name AS output_poster_name
+         uo.name AS output_poster_name,
+         ppl.production_plan_id, ppn.plan_no AS production_plan_no
   FROM processing_records pr
   JOIN material_issues mi ON mi.id = pr.material_issue_id
   JOIN stock_locations loc ON loc.id = mi.location_id
@@ -24,6 +25,8 @@ const RECORD_SELECT = `
   LEFT JOIN users us ON us.id = mi.supervisor_user_id
   LEFT JOIN users uf ON uf.id = mi.foreman_user_id
   LEFT JOIN products pp ON pp.id = pr.produced_product_id
+  LEFT JOIN production_plan_items ppl ON ppl.id = pr.production_plan_item_id
+  LEFT JOIN production_plans ppn ON ppn.id = ppl.production_plan_id
   LEFT JOIN uoms pu ON pu.id = pr.produced_uom_id
   LEFT JOIN companies cmp ON cmp.id = pr.company_id
   LEFT JOIN users u1 ON u1.id = pr.created_by
@@ -161,9 +164,10 @@ export const processingRepository = {
   update: async (connection, id, data) => {
     await connection.query(`
       UPDATE processing_records SET start_date = ?, produced_product_id = ?, produced_uom_id = ?, produced_unit = ?,
-        produced_quantity = ?, remarks = ?, updated_by = ?, updated_at = NOW()
+        produced_quantity = ?, production_plan_item_id = ?, remarks = ?, updated_by = ?, updated_at = NOW()
       WHERE id = ?
-    `, [data.start_date, data.produced_product_id, data.produced_uom_id, data.produced_unit, data.produced_quantity, data.remarks, data.user_id, id]);
+    `, [data.start_date, data.produced_product_id, data.produced_uom_id, data.produced_unit, data.produced_quantity,
+      data.production_plan_item_id ?? null, data.remarks, data.user_id, id]);
   },
 
   updateItem: async (connection, itemId, data) => {

@@ -173,10 +173,12 @@ const validateCommon = async (req, isUpdate = false) => {
     }
   }
 
-  // comments — intentionally NOT validated or persisted. The Laravel field
-  // exists but products.comments does not exist on the current locked
-  // schema; accepted (if present) and silently dropped by the service,
-  // never echoed back as a persisted value.
+  // comments — persisted (products.comments, as in the original ERP).
+  if (!isBlank(body.comments)) {
+    if (typeof body.comments !== 'string' || body.comments.length > 1000) {
+      errors.push('Comments cannot exceed 1000 characters');
+    }
+  }
 
   // status
   if (!body.status || !['active', 'inactive'].includes(body.status)) {

@@ -5,7 +5,7 @@ import { pool } from '../../config/database.js';
 // by agent_commissions rows). It must never be read or written, so it is
 // deliberately excluded here rather than relying on callers to ignore it after
 // a `SELECT *`.
-const AGENT_COLUMNS = 'id, agent_type, name, display_code, calculation_basis_id, status, remarks, created_by, updated_by, created_at, updated_at, deleted_at';
+const AGENT_COLUMNS = 'id, agent_type, name, display_code, calculation_basis_id, status, remarks, comments, created_by, updated_by, created_at, updated_at, deleted_at';
 
 export const agentRepository = {
   findAll: async ({ search, status, agent_type, sort, direction, page = 1, limit = 10 }) => {
@@ -89,7 +89,7 @@ export const agentRepository = {
   findByIdIncludingRelations: async (id) => {
     const [rows] = await pool.query(
       `SELECT
-        a.id, a.agent_type, a.name, a.display_code, a.calculation_basis_id, a.status, a.remarks,
+        a.id, a.agent_type, a.name, a.display_code, a.calculation_basis_id, a.status, a.remarks, a.comments,
         a.created_by, a.updated_by, a.created_at, a.updated_at, a.deleted_at,
         cb.name AS calculation_basis_name,
         u1.name AS creator_name,
@@ -196,12 +196,12 @@ export const agentRepository = {
   create: async (connection, data) => {
     const [result] = await connection.query(
       `INSERT INTO agents (
-        agent_type, name, display_code, calculation_basis_id, status, remarks,
+        agent_type, name, display_code, calculation_basis_id, status, remarks, comments,
         created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         data.agent_type, data.name, data.display_code, data.calculation_basis_id,
-        data.status, data.remarks, data.created_by, data.updated_by
+        data.status, data.remarks, data.comments, data.created_by, data.updated_by
       ]
     );
     return result.insertId;
@@ -210,11 +210,11 @@ export const agentRepository = {
   update: async (connection, id, data) => {
     await connection.query(
       `UPDATE agents SET
-        agent_type = ?, name = ?, display_code = ?, calculation_basis_id = ?, status = ?, remarks = ?,
+        agent_type = ?, name = ?, display_code = ?, calculation_basis_id = ?, status = ?, remarks = ?, comments = ?,
         updated_by = ?, updated_at = NOW()
       WHERE id = ? AND deleted_at IS NULL`,
       [
-        data.agent_type, data.name, data.display_code, data.calculation_basis_id, data.status, data.remarks,
+        data.agent_type, data.name, data.display_code, data.calculation_basis_id, data.status, data.remarks, data.comments,
         data.updated_by, id
       ]
     );

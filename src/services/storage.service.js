@@ -90,6 +90,7 @@ const s3 = () => {
   const objectPath = (key) => `/${c.bucket}/${key}`;
   const base = { region: c.region, accessKeyId: c.accessKeyId, secretAccessKey: c.secretAccessKey };
 
+  /** Returns the response body for GET (a Buffer); nothing for PUT / DELETE. */
   const send = async (method, key, body = null, contentType = null) => {
     const payloadHash = sha256Hex(body || '');
     const headers = { host: endpoint.host, 'x-amz-content-sha256': payloadHash };
@@ -109,10 +110,12 @@ const s3 = () => {
       const detail = (await response.text().catch(() => '')).slice(0, 300);
       throw new Error(`Storage ${method} ${key} failed (${response.status}) ${detail}`);
     }
+    return method === 'GET' ? Buffer.from(await response.arrayBuffer()) : undefined;
   };
 
   return {
     put: (key, buffer, contentType) => send('PUT', key, buffer, contentType || 'application/octet-stream'),
+    get: (key) => send('GET', key),
     remove: (key) => send('DELETE', key),
     /** A signed GET link valid for `expires` seconds (query-string auth, nothing secret in it). */
     url: (key, expires = c.urlExpiresSeconds) => {
@@ -140,6 +143,7 @@ const local = {
     await fs.promises.mkdir(path.dirname(file), { recursive: true });
     await fs.promises.writeFile(file, buffer);
   },
+  get: (key) => fs.promises.readFile(path.join(LOCAL_ROOT, key)),
   remove: async (key) => {
     await fs.promises.unlink(path.join(LOCAL_ROOT, key)).catch((err) => {
       if (err.code !== 'ENOENT') throw err;
@@ -162,6 +166,12 @@ export const storage = {
   put: async (key, buffer, contentType) => {
     assertKey(key);
     await driver().put(key, buffer, contentType);
+  },
+
+  /** The file's bytes (private files such as archived documents are read through the API, never /storage). */
+  get: async (key) => {
+    assertKey(key);
+    return driver().get(key);
   },
 
   /** Deletes a file; a missing file is not an error. Failures are logged, never thrown (cleanup runs after commits). */

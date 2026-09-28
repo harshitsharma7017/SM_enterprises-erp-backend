@@ -10,7 +10,9 @@
     "generate:module": "node scripts/generate-module.js",
     "seed:rbac": "node scripts/seed-rbac.js",
     "seed:number-series": "node scripts/seed-number-series.js",
-    "backup:db": "node scripts/backup-db.js"
+    "seed:lookups": "node scripts/seed-lookups.js",
+    "backup:db": "node scripts/backup-db.js",
+    "backfill:documents": "node scripts/backfill-documents.js"
   },
   "keywords": [],
   "author": "",

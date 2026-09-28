@@ -67,8 +67,8 @@ export const supplierService = {
 
   /**
    * Builds the suppliers-table payload from validated input. `client_details`
-   * and `comments` are deliberately never read here — the locked schema has
-   * no such columns on `suppliers`.
+   * (the jobber's "Buyer Details") is already nulled by the validator for a
+   * trading-only party.
    */
   buildPayload: (data) => ({
     // Blank company = shared by both companies.
@@ -99,7 +99,9 @@ export const supplierService = {
     requires_sample_approval: !!data.requires_sample_approval,
     default_delivery_mode: data.default_delivery_mode,
     status: data.status,
-    remarks: data.remarks || null
+    remarks: data.remarks || null,
+    comments: data.comments || null,
+    client_details: data.client_details || null
   }),
 
   /** Linked products/buyers may not belong to a different company than the supplier. */

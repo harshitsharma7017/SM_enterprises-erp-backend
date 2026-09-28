@@ -2,6 +2,7 @@ import { pool } from '../../config/database.js';
 import { buyerRepository } from './buyer.repository.js';
 import { companyScope } from '../../services/company-scope.service.js';
 import { numberSeriesService } from '../../services/number-series.service.js';
+import { supplierRepository } from '../supplier/supplier.repository.js';
 
 const isBlank = (v) => v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
 
@@ -33,11 +34,9 @@ export const buyerService = {
   },
 
   /**
-   * Builds the buyers-table payload from validated input. `comments` is
-   * deliberately never read here — the locked schema has no
-   * buyers.comments column. State/city/advance_percent/sight_percent/
-   * contact_designation_id/accepted-currency-incoterm-sets are likewise
-   * never read — the locked schema cannot persist them.
+   * Builds the buyers-table payload from validated input (state / city and the
+   * advance / at-sight split are already normalised by the validator). The
+   * original's accepted-currency / incoterm sets are not stored.
    */
   buildPayload: (data) => ({
     // Blank company = shared by both companies.
@@ -45,11 +44,14 @@ export const buyerService = {
     company_name: data.company_name,
     name_on_export_invoice: data.name_on_export_invoice || null,
     contact_person: data.contact_person || null,
+    contact_designation_id: data.contact_designation_id || null,
     email: data.email || null,
     mobile: data.mobile || null,
     gst_vat_no: data.gst_vat_no || null,
     address: data.address || null,
     country_id: data.country_id || null,
+    state_id: data.state_id || null,
+    city_id: data.city_id || null,
     pincode: data.pincode || null,
     port_id: data.port_id || null,
     agent_id: data.agent_id || null,
@@ -58,6 +60,8 @@ export const buyerService = {
     agent_commission_type: isBlank(data.agent_commission_value) ? null : (data.agent_commission_type || null),
     agent_commission_value: isBlank(data.agent_commission_value) ? null : data.agent_commission_value,
     payment_term_id: data.payment_term_id || null,
+    advance_percent: data.advance_percent ?? null,
+    sight_percent: data.sight_percent ?? null,
     incoterm_id: data.incoterm_id || null,
     currency_id: data.currency_id || null,
     shipment_method_id: data.shipment_method_id || null,
@@ -65,7 +69,8 @@ export const buyerService = {
     account_number: data.account_number || null,
     swift_code: data.swift_code || null,
     status: data.status,
-    remarks: data.remarks || null
+    remarks: data.remarks || null,
+    comments: data.comments || null
   }),
 
   create: async (data, userId) => {
@@ -280,8 +285,10 @@ export const buyerService = {
    * own Buyer formData() never unions in the record's current (possibly
    * inactive) value for any field, so this must not copy that pattern.
    */
-  getFormData: async () => {
-    const [categories, agents, countries, ports, designations, paymentTerms, incoterms, currencies, shipmentMethods] =
+  // `countryId === undefined` means nothing chosen yet → India (the original's
+  // default); the edit screen passes the buyer's own country, even when null.
+  getFormData: async (countryId, stateId) => {
+    const [categories, agents, countries, ports, designations, paymentTerms, incoterms, currencies, shipmentMethods, indiaCountryId] =
       await Promise.all([
         buyerRepository.getActiveCategories(),
         buyerRepository.getActiveAgentsByType('buyer'),
@@ -291,9 +298,17 @@ export const buyerService = {
         buyerRepository.getPaymentTermsForSide('buyer'),
         buyerRepository.getActiveIncoterms(),
         buyerRepository.getActiveCurrencies(),
-        buyerRepository.getActiveShipmentMethods()
+        buyerRepository.getActiveShipmentMethods(),
+        supplierRepository.getIndiaCountryId()
       ]);
+    const effectiveCountryId = countryId !== undefined ? countryId : indiaCountryId;
+    const [states, cities] = await Promise.all([
+      effectiveCountryId ? supplierRepository.getStatesForCountry(effectiveCountryId) : [],
+      stateId ? supplierRepository.getCitiesForState(stateId) : [],
+    ]);
+    // Payment terms that open the advance / at-sight split.
+    const splitTermIds = paymentTerms.filter((t) => t.has_split).map((t) => t.id);
 
-    return { categories, agents, countries, ports, designations, paymentTerms, incoterms, currencies, shipmentMethods };
+    return { categories, agents, countries, ports, designations, paymentTerms, incoterms, currencies, shipmentMethods, indiaCountryId, states, cities, splitTermIds };
   }
 };

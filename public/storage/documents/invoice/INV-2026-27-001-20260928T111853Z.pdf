@@ -1,0 +1,104 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [7 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Length 3394 >>
+stream
+BT /F2 16 Tf 0.12 g 36 793.09 Td (SM Enterprises) Tj ET
+0.12 G 1.2 w 36 778.89 m 559.28 778.89 l S
+0.93 g 36 744.89 523.28 26 re f
+BT /F2 13 Tf 0.12 g 46 752.49 Td (INVOICE) Tj ET
+BT /F2 11 Tf 0.12 g 466.12 754.09 Td (INV/2026-27/001) Tj ET
+0.72 G 0.5 w 36 684.39 523.28 50.5 re S
+0.93 g 36 719.89 523.28 15 re f
+BT /F2 7.5 Tf 0.42 g 44 724.89 Td (BILL TO) Tj ET
+BT /F2 9.5 Tf 0.12 g 44 706.29 Td (Test Buyer Ltd) Tj ET
+BT /F1 8.5 Tf 0.12 g 44 695.09 Td (LS1 4AB) Tj ET
+0.72 G 0.5 w 36 643.39 130.82 31 re S
+BT /F1 7 Tf 0.42 g 42 664.79 Td (Invoice number) Tj ET
+BT /F2 9 Tf 0.12 g 42 653.19 Td (INV/2026-27/001) Tj ET
+0.72 G 0.5 w 166.82 643.39 130.82 31 re S
+BT /F1 7 Tf 0.42 g 172.82 664.79 Td (Invoice date) Tj ET
+BT /F2 9 Tf 0.12 g 172.82 653.19 Td (28-09-2026) Tj ET
+0.72 G 0.5 w 297.64 643.39 130.82 31 re S
+BT /F1 7 Tf 0.42 g 303.64 664.79 Td (Currency) Tj ET
+BT /F2 9 Tf 0.12 g 303.64 653.19 Td (US Dollar) Tj ET
+0.72 G 0.5 w 428.46 643.39 130.82 31 re S
+BT /F1 7 Tf 0.42 g 434.46 664.79 Td (Proforma invoice) Tj ET
+BT /F2 9 Tf 0.12 g 434.46 653.19 Td (PI/2026-27/001) Tj ET
+0.72 G 0.5 w 36 601.39 130.82 42 re S
+BT /F1 7 Tf 0.42 g 42 633.79 Td (Order) Tj ET
+BT /F2 9 Tf 0.12 g 42 622.19 Td (GT/BUY01/006/2026-27) Tj ET
+BT /F2 9 Tf 0.12 g 42 611.19 Td (\(28-09-2026\)) Tj ET
+0.72 G 0.5 w 166.82 601.39 130.82 42 re S
+BT /F1 7 Tf 0.42 g 172.82 633.79 Td (Buyer reference) Tj ET
+BT /F2 9 Tf 0.12 g 172.82 622.19 Td (PO-TB-7781) Tj ET
+0.72 G 0.5 w 297.64 601.39 130.82 42 re S
+BT /F1 7 Tf 0.42 g 303.64 633.79 Td (Dispatches) Tj ET
+BT /F2 9 Tf 0.12 g 303.64 622.19 Td (DSP/2026-27/001) Tj ET
+0.72 G 0.5 w 428.46 601.39 130.82 42 re S
+0.2 g 36 563.39 523.28 26 re f
+BT /F2 7.5 Tf 1 g 45.58 579.39 Td (#) Tj ET
+BT /F2 7.5 Tf 1 g 63.33 579.39 Td (Description) Tj ET
+BT /F2 7.5 Tf 1 g 331.55 579.39 Td (Quantity) Tj ET
+BT /F2 7.5 Tf 1 g 369.97 579.39 Td (Unit) Tj ET
+BT /F2 7.5 Tf 1 g 425.7 579.39 Td (Unit price \(US) Tj ET
+BT /F2 7.5 Tf 1 g 451.54 570.39 Td (Dollar\)) Tj ET
+BT /F2 7.5 Tf 1 g 486.11 579.39 Td (Amount \(US Dollar\)) Tj ET
+BT /F1 8.5 Tf 0.12 g 45.3 552.59 Td (1) Tj ET
+BT /F1 8.5 Tf 0.12 g 63.33 552.59 Td (Waistband 32mm Black) Tj ET
+BT /F1 8.5 Tf 0.12 g 352.51 552.59 Td (70) Tj ET
+BT /F1 8.5 Tf 0.12 g 369.97 552.59 Td (PCS) Tj ET
+BT /F1 8.5 Tf 0.12 g 458.75 552.59 Td (5.00) Tj ET
+BT /F1 8.5 Tf 0.12 g 529.29 552.59 Td (350.00) Tj ET
+BT /F3 7.5 Tf 0.42 g 63.33 542.89 Td (Dispatch DSP/2026-27/001 | Lot LOT/2026-27/002) Tj ET
+0.72 G 0.4 w 36 535.89 m 559.28 535.89 l S
+0.72 G 0.5 w 36 535.89 523.28 0.01 re S
+BT /F1 7 Tf 0.42 g 36 522.29 Td (Amount in words) Tj ET
+BT /F2 8.5 Tf 0.12 g 36 511.09 Td (US Dollar Three Hundred Fifty Only) Tj ET
+0.93 g 329.28 513.89 230 16 re f
+BT /F2 8.5 Tf 0.12 g 335.28 519.09 Td (Total \(US Dollar\)) Tj ET
+BT /F2 10 Tf 0.12 g 522.7 517.89 Td (350.00) Tj ET
+0.72 G 0.5 w 329.28 513.89 230 16 re S
+BT /F2 8.5 Tf 0.12 g 410.31 478.09 Td (For SM Enterprises) Tj ET
+0.42 G 0.6 w 349.28 444.89 m 549.28 444.89 l S
+BT /F1 8 Tf 0.12 g 412.15 434.49 Td (Authorised Signatory) Tj ET
+BT /F3 7 Tf 0.42 g 36 413.29 Td (No tax, discount or freight is calculated by the ERP. Tax details: format pending client approval.) Tj ET
+0.72 G 0.5 w 36 38 m 559.28 38 l S
+BT /F1 7 Tf 0.42 g 36 28.4 Td (This is a computer-generated document.) Tj ET
+BT /F1 7 Tf 0.42 g 271.18 28.4 Td (INV/2026-27/001) Tj ET
+BT /F1 7 Tf 0.42 g 523.48 28.4 Td (Page 1 of 1) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 6 0 R >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000320 00000 n 
+0000000425 00000 n 
+0000003871 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+4023
+%%EOF

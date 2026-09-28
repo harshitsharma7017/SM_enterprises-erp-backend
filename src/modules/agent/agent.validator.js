@@ -125,8 +125,7 @@ const validateCommon = async (req, isUpdate = false) => {
     }
   }
 
-  // comments — accepted for API compatibility, shape-checked, NEVER
-  // persisted (no agents.comments column on the locked schema).
+  // comments — persisted (agents.comments).
   if (!isBlank(body.comments)) {
     if (typeof body.comments !== 'string' || body.comments.length > 1000) {
       errors.push('Comments cannot exceed 1000 characters');

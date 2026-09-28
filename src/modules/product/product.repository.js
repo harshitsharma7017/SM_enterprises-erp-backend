@@ -198,15 +198,15 @@ export const productRepository = {
       `INSERT INTO products (
         company_id, category_id, material_type_id, uom_id, item_group_code, name, name_on_export_document, barcode,
         unit_po, unit_export, hsn_code, drawback_sr_no, price_band_id, gst_rate_id,
-        fabric_length_mtr, fabric_width_inch, sq_mtr_per_unit, description, status, remarks,
+        fabric_length_mtr, fabric_width_inch, sq_mtr_per_unit, description, status, remarks, comments,
         created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         data.company_id, data.category_id, data.material_type_id, data.uom_id, data.item_group_code, data.name, data.name_on_export_document,
         data.barcode, data.unit_po, data.unit_export, data.hsn_code,
         data.drawback_sr_no, data.price_band_id, data.gst_rate_id,
         data.fabric_length_mtr, data.fabric_width_inch, data.sq_mtr_per_unit,
-        data.description, data.status, data.remarks,
+        data.description, data.status, data.remarks, data.comments,
         data.created_by, data.updated_by
       ]
     );
@@ -218,13 +218,13 @@ export const productRepository = {
       `UPDATE products SET
         company_id = ?, category_id = ?, material_type_id = ?, uom_id = ?, item_group_code = ?, name = ?, name_on_export_document = ?, barcode = ?,
         unit_po = ?, unit_export = ?, hsn_code = ?, drawback_sr_no = ?, price_band_id = ?, gst_rate_id = ?,
-        fabric_length_mtr = ?, fabric_width_inch = ?, sq_mtr_per_unit = ?, description = ?, status = ?, remarks = ?,
+        fabric_length_mtr = ?, fabric_width_inch = ?, sq_mtr_per_unit = ?, description = ?, status = ?, remarks = ?, comments = ?,
         updated_by = ?, updated_at = NOW()
       WHERE id = ? AND deleted_at IS NULL`,
       [
         data.company_id, data.category_id, data.material_type_id, data.uom_id, data.item_group_code, data.name, data.name_on_export_document, data.barcode,
         data.unit_po, data.unit_export, data.hsn_code, data.drawback_sr_no, data.price_band_id, data.gst_rate_id,
-        data.fabric_length_mtr, data.fabric_width_inch, data.sq_mtr_per_unit, data.description, data.status, data.remarks,
+        data.fabric_length_mtr, data.fabric_width_inch, data.sq_mtr_per_unit, data.description, data.status, data.remarks, data.comments,
         data.updated_by, id
       ]
     );

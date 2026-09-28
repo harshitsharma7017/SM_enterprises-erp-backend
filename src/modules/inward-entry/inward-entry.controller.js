@@ -1,5 +1,6 @@
 import { inwardEntryService } from './inward-entry.service.js';
 import { inwardEntryRepository } from './inward-entry.repository.js';
+import { documentArchive } from '../../services/document-archive.service.js';
 
 export const inwardEntryController = {
   // GET /api/procurement/inward-entries — GRNs and legacy inward entries
@@ -94,6 +95,7 @@ export const inwardEntryController = {
   post: async (req, res, next) => {
     try {
       await inwardEntryService.post(req.params.id, req.user.id);
+      await documentArchive.capture('grn', Number(req.params.id), 'posted', req.user.id);
       const entry = await inwardEntryRepository.findById(req.params.id);
       res.json({ success: true, message: `Goods receipt ${entry.inward_no} posted — ${entry.lots_count} lot(s) created.`, data: entry });
     } catch (error) {

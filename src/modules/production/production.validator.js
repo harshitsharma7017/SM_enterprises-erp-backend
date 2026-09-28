@@ -36,6 +36,7 @@ export const productionValidator = {
   processingUpdate: Joi.object({
     start_date: dateString.required(),
     produced_product_id: optionalId,
+    production_plan_item_id: optionalId,
     produced_uom_id: optionalId,
     produced_quantity: decimalInput.allow(null, ''),
     remarks: Joi.string().max(2000).allow(null, ''),

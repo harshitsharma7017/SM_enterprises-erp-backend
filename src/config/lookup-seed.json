@@ -1,0 +1,2208 @@
+{
+ "_source": "Ported from guru-traders-erp database/seeders: LookupSeeder, GeoSeeder, SupplierLookupSeeder (designations), DefaultMarkupSeeder. Starting values, not the client's final data.",
+ "price_bands": [
+  {
+   "code": "AA",
+   "name": "Band AA"
+  },
+  {
+   "code": "AB",
+   "name": "Band AB"
+  }
+ ],
+ "gst_rates": [
+  0,
+  5,
+  12,
+  18,
+  28
+ ],
+ "calculation_bases": [
+  "FOB Value",
+  "Net Value",
+  "Quantity",
+  "Net Weight",
+  "Square Metre"
+ ],
+ "countries": [
+  {
+   "iso_code": "IN",
+   "name": "India",
+   "dial_code": "+91"
+  },
+  {
+   "iso_code": "GB",
+   "name": "United Kingdom",
+   "dial_code": "+44"
+  },
+  {
+   "iso_code": "US",
+   "name": "United States",
+   "dial_code": "+1"
+  },
+  {
+   "iso_code": "AE",
+   "name": "United Arab Emirates",
+   "dial_code": "+971"
+  },
+  {
+   "iso_code": "DE",
+   "name": "Germany",
+   "dial_code": "+49"
+  },
+  {
+   "iso_code": "FR",
+   "name": "France",
+   "dial_code": "+33"
+  },
+  {
+   "iso_code": "IT",
+   "name": "Italy",
+   "dial_code": "+39"
+  },
+  {
+   "iso_code": "ES",
+   "name": "Spain",
+   "dial_code": "+34"
+  },
+  {
+   "iso_code": "NL",
+   "name": "Netherlands",
+   "dial_code": "+31"
+  },
+  {
+   "iso_code": "AU",
+   "name": "Australia",
+   "dial_code": "+61"
+  },
+  {
+   "iso_code": "CA",
+   "name": "Canada",
+   "dial_code": "+1"
+  },
+  {
+   "iso_code": "JP",
+   "name": "Japan",
+   "dial_code": "+81"
+  }
+ ],
+ "currencies": [
+  {
+   "iso_code": "INR",
+   "name": "Indian Rupee",
+   "symbol": "₹"
+  },
+  {
+   "iso_code": "USD",
+   "name": "US Dollar",
+   "symbol": "$"
+  },
+  {
+   "iso_code": "EUR",
+   "name": "Euro",
+   "symbol": "€"
+  },
+  {
+   "iso_code": "GBP",
+   "name": "Pound Sterling",
+   "symbol": "£"
+  },
+  {
+   "iso_code": "AED",
+   "name": "UAE Dirham",
+   "symbol": "د.إ"
+  },
+  {
+   "iso_code": "AUD",
+   "name": "Australian Dollar",
+   "symbol": "A$"
+  },
+  {
+   "iso_code": "CAD",
+   "name": "Canadian Dollar",
+   "symbol": "C$"
+  },
+  {
+   "iso_code": "JPY",
+   "name": "Japanese Yen",
+   "symbol": "¥"
+  }
+ ],
+ "ports": [
+  {
+   "country": "IN",
+   "code": "INMAA",
+   "name": "Chennai Port",
+   "type": "sea"
+  },
+  {
+   "country": "IN",
+   "code": "INNSA",
+   "name": "Nhava Sheva",
+   "type": "sea"
+  },
+  {
+   "country": "IN",
+   "code": "INTUT",
+   "name": "Tuticorin Port",
+   "type": "sea"
+  },
+  {
+   "country": "IN",
+   "code": "INCOK",
+   "name": "Cochin Port",
+   "type": "sea"
+  },
+  {
+   "country": "IN",
+   "code": "INMAA4",
+   "name": "Chennai Air Cargo",
+   "type": "air"
+  },
+  {
+   "country": "GB",
+   "code": "GBLON",
+   "name": "London Port",
+   "type": "sea"
+  },
+  {
+   "country": "GB",
+   "code": "GBFXT",
+   "name": "Felixstowe",
+   "type": "sea"
+  },
+  {
+   "country": "US",
+   "code": "USNYC",
+   "name": "New York Port",
+   "type": "sea"
+  },
+  {
+   "country": "US",
+   "code": "USLAX",
+   "name": "Los Angeles Port",
+   "type": "sea"
+  },
+  {
+   "country": "AE",
+   "code": "AEJEA",
+   "name": "Jebel Ali",
+   "type": "sea"
+  },
+  {
+   "country": "DE",
+   "code": "DEHAM",
+   "name": "Hamburg",
+   "type": "sea"
+  },
+  {
+   "country": "NL",
+   "code": "NLRTM",
+   "name": "Rotterdam",
+   "type": "sea"
+  }
+ ],
+ "incoterms": [
+  {
+   "code": "EXW",
+   "name": "Ex Works"
+  },
+  {
+   "code": "FOB",
+   "name": "Free On Board"
+  },
+  {
+   "code": "CFR",
+   "name": "Cost and Freight"
+  },
+  {
+   "code": "CIF",
+   "name": "Cost, Insurance and Freight"
+  },
+  {
+   "code": "DAP",
+   "name": "Delivered At Place"
+  },
+  {
+   "code": "DDP",
+   "name": "Delivered Duty Paid"
+  },
+  {
+   "code": "FCA",
+   "name": "Free Carrier"
+  }
+ ],
+ "payment_terms": [
+  {
+   "name": "Advance",
+   "days": null,
+   "applies_to": "both",
+   "has_split": false
+  },
+  {
+   "name": "30 Days",
+   "days": 30,
+   "applies_to": "both",
+   "has_split": false
+  },
+  {
+   "name": "45 Days",
+   "days": 45,
+   "applies_to": "both",
+   "has_split": false
+  },
+  {
+   "name": "60 Days",
+   "days": 60,
+   "applies_to": "both",
+   "has_split": false
+  },
+  {
+   "name": "90 Days",
+   "days": 90,
+   "applies_to": "buyer",
+   "has_split": false
+  },
+  {
+   "name": "Against L/C",
+   "days": null,
+   "applies_to": "buyer",
+   "has_split": false
+  },
+  {
+   "name": "50% Advance, 50% on Delivery",
+   "days": null,
+   "applies_to": "both",
+   "has_split": true
+  },
+  {
+   "name": "Part Advance & Part at Sight",
+   "days": null,
+   "applies_to": "buyer",
+   "has_split": true
+  }
+ ],
+ "shipment_methods": [
+  "Sea",
+  "Air",
+  "Courier",
+  "Land"
+ ],
+ "designations": [
+  "Proprietor",
+  "Partner",
+  "Director",
+  "General Manager",
+  "Production Manager",
+  "Merchandiser",
+  "Marketing Executive",
+  "Accountant",
+  "Store Keeper"
+ ],
+ "supplier_types": [
+  {
+   "code": "unregistered",
+   "name": "Unregistered",
+   "is_registered": 0
+  },
+  {
+   "code": "registered_regular",
+   "name": "Registered — Regular",
+   "is_registered": 1
+  },
+  {
+   "code": "registered_composition",
+   "name": "Registered — Composition",
+   "is_registered": 1
+  }
+ ],
+ "default_markups": [
+  {
+   "name": "Economy 5%",
+   "markup_percent": 5
+  },
+  {
+   "name": "Standard 10%",
+   "markup_percent": 10
+  },
+  {
+   "name": "Premium 15%",
+   "markup_percent": 15
+  },
+  {
+   "name": "Premium Plus 20%",
+   "markup_percent": 20
+  }
+ ],
+ "geo": {
+  "IN": [
+   {
+    "name": "Andhra Pradesh",
+    "code": "AP",
+    "cities": [
+     "Visakhapatnam",
+     "Vijayawada",
+     "Guntur",
+     "Nellore",
+     "Tirupati",
+     "Kurnool"
+    ]
+   },
+   {
+    "name": "Arunachal Pradesh",
+    "code": "AR",
+    "cities": [
+     "Itanagar",
+     "Naharlagun"
+    ]
+   },
+   {
+    "name": "Assam",
+    "code": "AS",
+    "cities": [
+     "Guwahati",
+     "Silchar",
+     "Dibrugarh",
+     "Jorhat"
+    ]
+   },
+   {
+    "name": "Bihar",
+    "code": "BR",
+    "cities": [
+     "Patna",
+     "Gaya",
+     "Bhagalpur",
+     "Muzaffarpur"
+    ]
+   },
+   {
+    "name": "Chhattisgarh",
+    "code": "CG",
+    "cities": [
+     "Raipur",
+     "Bhilai",
+     "Bilaspur",
+     "Korba"
+    ]
+   },
+   {
+    "name": "Goa",
+    "code": "GA",
+    "cities": [
+     "Panaji",
+     "Margao",
+     "Vasco da Gama"
+    ]
+   },
+   {
+    "name": "Gujarat",
+    "code": "GJ",
+    "cities": [
+     "Ahmedabad",
+     "Surat",
+     "Vadodara",
+     "Rajkot",
+     "Bhavnagar",
+     "Jamnagar",
+     "Gandhinagar"
+    ]
+   },
+   {
+    "name": "Haryana",
+    "code": "HR",
+    "cities": [
+     "Gurugram",
+     "Faridabad",
+     "Panipat",
+     "Ambala",
+     "Karnal",
+     "Hisar"
+    ]
+   },
+   {
+    "name": "Himachal Pradesh",
+    "code": "HP",
+    "cities": [
+     "Shimla",
+     "Solan",
+     "Dharamshala",
+     "Baddi"
+    ]
+   },
+   {
+    "name": "Jharkhand",
+    "code": "JH",
+    "cities": [
+     "Ranchi",
+     "Jamshedpur",
+     "Dhanbad",
+     "Bokaro"
+    ]
+   },
+   {
+    "name": "Karnataka",
+    "code": "KA",
+    "cities": [
+     "Bengaluru",
+     "Mysuru",
+     "Mangaluru",
+     "Hubballi",
+     "Belagavi",
+     "Ballari",
+     "Davanagere"
+    ]
+   },
+   {
+    "name": "Kerala",
+    "code": "KL",
+    "cities": [
+     "Kochi",
+     "Thiruvananthapuram",
+     "Kozhikode",
+     "Thrissur",
+     "Kannur",
+     "Kollam"
+    ]
+   },
+   {
+    "name": "Madhya Pradesh",
+    "code": "MP",
+    "cities": [
+     "Indore",
+     "Bhopal",
+     "Jabalpur",
+     "Gwalior",
+     "Ujjain"
+    ]
+   },
+   {
+    "name": "Maharashtra",
+    "code": "MH",
+    "cities": [
+     "Mumbai",
+     "Pune",
+     "Nagpur",
+     "Nashik",
+     "Aurangabad",
+     "Solapur",
+     "Kolhapur",
+     "Thane"
+    ]
+   },
+   {
+    "name": "Manipur",
+    "code": "MN",
+    "cities": [
+     "Imphal"
+    ]
+   },
+   {
+    "name": "Meghalaya",
+    "code": "ML",
+    "cities": [
+     "Shillong",
+     "Tura"
+    ]
+   },
+   {
+    "name": "Mizoram",
+    "code": "MZ",
+    "cities": [
+     "Aizawl"
+    ]
+   },
+   {
+    "name": "Nagaland",
+    "code": "NL",
+    "cities": [
+     "Kohima",
+     "Dimapur"
+    ]
+   },
+   {
+    "name": "Odisha",
+    "code": "OD",
+    "cities": [
+     "Bhubaneswar",
+     "Cuttack",
+     "Rourkela",
+     "Berhampur"
+    ]
+   },
+   {
+    "name": "Punjab",
+    "code": "PB",
+    "cities": [
+     "Ludhiana",
+     "Amritsar",
+     "Jalandhar",
+     "Patiala",
+     "Bathinda",
+     "Mohali"
+    ]
+   },
+   {
+    "name": "Rajasthan",
+    "code": "RJ",
+    "cities": [
+     "Jaipur",
+     "Jodhpur",
+     "Udaipur",
+     "Kota",
+     "Ajmer",
+     "Bhilwara"
+    ]
+   },
+   {
+    "name": "Sikkim",
+    "code": "SK",
+    "cities": [
+     "Gangtok"
+    ]
+   },
+   {
+    "name": "Tamil Nadu",
+    "code": "TN",
+    "cities": [
+     "Chennai",
+     "Coimbatore",
+     "Tirupur",
+     "Madurai",
+     "Salem",
+     "Erode",
+     "Tiruchirappalli",
+     "Tirunelveli",
+     "Vellore",
+     "Thoothukudi",
+     "Karur",
+     "Namakkal",
+     "Kanchipuram",
+     "Dindigul"
+    ]
+   },
+   {
+    "name": "Telangana",
+    "code": "TG",
+    "cities": [
+     "Hyderabad",
+     "Warangal",
+     "Nizamabad",
+     "Karimnagar"
+    ]
+   },
+   {
+    "name": "Tripura",
+    "code": "TR",
+    "cities": [
+     "Agartala"
+    ]
+   },
+   {
+    "name": "Uttar Pradesh",
+    "code": "UP",
+    "cities": [
+     "Lucknow",
+     "Kanpur",
+     "Noida",
+     "Ghaziabad",
+     "Agra",
+     "Varanasi",
+     "Meerut",
+     "Prayagraj"
+    ]
+   },
+   {
+    "name": "Uttarakhand",
+    "code": "UK",
+    "cities": [
+     "Dehradun",
+     "Haridwar",
+     "Roorkee",
+     "Haldwani"
+    ]
+   },
+   {
+    "name": "West Bengal",
+    "code": "WB",
+    "cities": [
+     "Kolkata",
+     "Howrah",
+     "Siliguri",
+     "Durgapur",
+     "Asansol"
+    ]
+   },
+   {
+    "name": "Andaman and Nicobar Islands",
+    "code": "AN",
+    "cities": [
+     "Port Blair"
+    ]
+   },
+   {
+    "name": "Chandigarh",
+    "code": "CH",
+    "cities": [
+     "Chandigarh"
+    ]
+   },
+   {
+    "name": "Dadra and Nagar Haveli and Daman and Diu",
+    "code": "DH",
+    "cities": [
+     "Silvassa",
+     "Daman",
+     "Diu"
+    ]
+   },
+   {
+    "name": "Delhi",
+    "code": "DL",
+    "cities": [
+     "New Delhi",
+     "Delhi"
+    ]
+   },
+   {
+    "name": "Jammu and Kashmir",
+    "code": "JK",
+    "cities": [
+     "Srinagar",
+     "Jammu"
+    ]
+   },
+   {
+    "name": "Ladakh",
+    "code": "LA",
+    "cities": [
+     "Leh",
+     "Kargil"
+    ]
+   },
+   {
+    "name": "Lakshadweep",
+    "code": "LD",
+    "cities": [
+     "Kavaratti"
+    ]
+   },
+   {
+    "name": "Puducherry",
+    "code": "PY",
+    "cities": [
+     "Puducherry",
+     "Karaikal"
+    ]
+   }
+  ],
+  "GB": [
+   {
+    "name": "England",
+    "code": "ENG",
+    "cities": [
+     "London",
+     "Manchester",
+     "Birmingham",
+     "Leeds",
+     "Liverpool",
+     "Bristol",
+     "Sheffield",
+     "Nottingham",
+     "Leicester",
+     "Newcastle upon Tyne",
+     "Southampton"
+    ]
+   },
+   {
+    "name": "Scotland",
+    "code": "SCT",
+    "cities": [
+     "Glasgow",
+     "Edinburgh",
+     "Aberdeen",
+     "Dundee"
+    ]
+   },
+   {
+    "name": "Wales",
+    "code": "WLS",
+    "cities": [
+     "Cardiff",
+     "Swansea",
+     "Newport"
+    ]
+   },
+   {
+    "name": "Northern Ireland",
+    "code": "NIR",
+    "cities": [
+     "Belfast",
+     "Londonderry"
+    ]
+   }
+  ],
+  "US": [
+   {
+    "name": "Alabama",
+    "code": "AL",
+    "cities": [
+     "Birmingham",
+     "Montgomery",
+     "Mobile"
+    ]
+   },
+   {
+    "name": "Alaska",
+    "code": "AK",
+    "cities": [
+     "Anchorage",
+     "Juneau"
+    ]
+   },
+   {
+    "name": "Arizona",
+    "code": "AZ",
+    "cities": [
+     "Phoenix",
+     "Tucson",
+     "Mesa"
+    ]
+   },
+   {
+    "name": "Arkansas",
+    "code": "AR",
+    "cities": [
+     "Little Rock",
+     "Fayetteville"
+    ]
+   },
+   {
+    "name": "California",
+    "code": "CA",
+    "cities": [
+     "Los Angeles",
+     "San Francisco",
+     "San Diego",
+     "San Jose",
+     "Sacramento",
+     "Long Beach",
+     "Oakland"
+    ]
+   },
+   {
+    "name": "Colorado",
+    "code": "CO",
+    "cities": [
+     "Denver",
+     "Colorado Springs",
+     "Aurora"
+    ]
+   },
+   {
+    "name": "Connecticut",
+    "code": "CT",
+    "cities": [
+     "Bridgeport",
+     "Hartford",
+     "New Haven"
+    ]
+   },
+   {
+    "name": "Delaware",
+    "code": "DE",
+    "cities": [
+     "Wilmington",
+     "Dover"
+    ]
+   },
+   {
+    "name": "District of Columbia",
+    "code": "DC",
+    "cities": [
+     "Washington"
+    ]
+   },
+   {
+    "name": "Florida",
+    "code": "FL",
+    "cities": [
+     "Miami",
+     "Orlando",
+     "Tampa",
+     "Jacksonville",
+     "Fort Lauderdale"
+    ]
+   },
+   {
+    "name": "Georgia",
+    "code": "GA",
+    "cities": [
+     "Atlanta",
+     "Savannah",
+     "Augusta"
+    ]
+   },
+   {
+    "name": "Hawaii",
+    "code": "HI",
+    "cities": [
+     "Honolulu"
+    ]
+   },
+   {
+    "name": "Idaho",
+    "code": "ID",
+    "cities": [
+     "Boise"
+    ]
+   },
+   {
+    "name": "Illinois",
+    "code": "IL",
+    "cities": [
+     "Chicago",
+     "Aurora",
+     "Springfield"
+    ]
+   },
+   {
+    "name": "Indiana",
+    "code": "IN",
+    "cities": [
+     "Indianapolis",
+     "Fort Wayne"
+    ]
+   },
+   {
+    "name": "Iowa",
+    "code": "IA",
+    "cities": [
+     "Des Moines",
+     "Cedar Rapids"
+    ]
+   },
+   {
+    "name": "Kansas",
+    "code": "KS",
+    "cities": [
+     "Wichita",
+     "Kansas City",
+     "Topeka"
+    ]
+   },
+   {
+    "name": "Kentucky",
+    "code": "KY",
+    "cities": [
+     "Louisville",
+     "Lexington"
+    ]
+   },
+   {
+    "name": "Louisiana",
+    "code": "LA",
+    "cities": [
+     "New Orleans",
+     "Baton Rouge"
+    ]
+   },
+   {
+    "name": "Maine",
+    "code": "ME",
+    "cities": [
+     "Portland",
+     "Augusta"
+    ]
+   },
+   {
+    "name": "Maryland",
+    "code": "MD",
+    "cities": [
+     "Baltimore",
+     "Annapolis"
+    ]
+   },
+   {
+    "name": "Massachusetts",
+    "code": "MA",
+    "cities": [
+     "Boston",
+     "Worcester",
+     "Springfield"
+    ]
+   },
+   {
+    "name": "Michigan",
+    "code": "MI",
+    "cities": [
+     "Detroit",
+     "Grand Rapids",
+     "Lansing"
+    ]
+   },
+   {
+    "name": "Minnesota",
+    "code": "MN",
+    "cities": [
+     "Minneapolis",
+     "Saint Paul"
+    ]
+   },
+   {
+    "name": "Mississippi",
+    "code": "MS",
+    "cities": [
+     "Jackson",
+     "Gulfport"
+    ]
+   },
+   {
+    "name": "Missouri",
+    "code": "MO",
+    "cities": [
+     "Kansas City",
+     "St. Louis",
+     "Springfield"
+    ]
+   },
+   {
+    "name": "Montana",
+    "code": "MT",
+    "cities": [
+     "Billings",
+     "Helena"
+    ]
+   },
+   {
+    "name": "Nebraska",
+    "code": "NE",
+    "cities": [
+     "Omaha",
+     "Lincoln"
+    ]
+   },
+   {
+    "name": "Nevada",
+    "code": "NV",
+    "cities": [
+     "Las Vegas",
+     "Reno",
+     "Carson City"
+    ]
+   },
+   {
+    "name": "New Hampshire",
+    "code": "NH",
+    "cities": [
+     "Manchester",
+     "Concord"
+    ]
+   },
+   {
+    "name": "New Jersey",
+    "code": "NJ",
+    "cities": [
+     "Newark",
+     "Jersey City",
+     "Trenton"
+    ]
+   },
+   {
+    "name": "New Mexico",
+    "code": "NM",
+    "cities": [
+     "Albuquerque",
+     "Santa Fe"
+    ]
+   },
+   {
+    "name": "New York",
+    "code": "NY",
+    "cities": [
+     "New York City",
+     "Buffalo",
+     "Rochester",
+     "Albany",
+     "Syracuse"
+    ]
+   },
+   {
+    "name": "North Carolina",
+    "code": "NC",
+    "cities": [
+     "Charlotte",
+     "Raleigh",
+     "Greensboro",
+     "Durham"
+    ]
+   },
+   {
+    "name": "North Dakota",
+    "code": "ND",
+    "cities": [
+     "Fargo",
+     "Bismarck"
+    ]
+   },
+   {
+    "name": "Ohio",
+    "code": "OH",
+    "cities": [
+     "Columbus",
+     "Cleveland",
+     "Cincinnati",
+     "Toledo"
+    ]
+   },
+   {
+    "name": "Oklahoma",
+    "code": "OK",
+    "cities": [
+     "Oklahoma City",
+     "Tulsa"
+    ]
+   },
+   {
+    "name": "Oregon",
+    "code": "OR",
+    "cities": [
+     "Portland",
+     "Salem",
+     "Eugene"
+    ]
+   },
+   {
+    "name": "Pennsylvania",
+    "code": "PA",
+    "cities": [
+     "Philadelphia",
+     "Pittsburgh",
+     "Harrisburg",
+     "Allentown"
+    ]
+   },
+   {
+    "name": "Rhode Island",
+    "code": "RI",
+    "cities": [
+     "Providence"
+    ]
+   },
+   {
+    "name": "South Carolina",
+    "code": "SC",
+    "cities": [
+     "Charleston",
+     "Columbia",
+     "Greenville"
+    ]
+   },
+   {
+    "name": "South Dakota",
+    "code": "SD",
+    "cities": [
+     "Sioux Falls",
+     "Pierre"
+    ]
+   },
+   {
+    "name": "Tennessee",
+    "code": "TN",
+    "cities": [
+     "Nashville",
+     "Memphis",
+     "Knoxville"
+    ]
+   },
+   {
+    "name": "Texas",
+    "code": "TX",
+    "cities": [
+     "Houston",
+     "Dallas",
+     "Austin",
+     "San Antonio",
+     "Fort Worth",
+     "El Paso"
+    ]
+   },
+   {
+    "name": "Utah",
+    "code": "UT",
+    "cities": [
+     "Salt Lake City",
+     "Provo"
+    ]
+   },
+   {
+    "name": "Vermont",
+    "code": "VT",
+    "cities": [
+     "Burlington",
+     "Montpelier"
+    ]
+   },
+   {
+    "name": "Virginia",
+    "code": "VA",
+    "cities": [
+     "Virginia Beach",
+     "Richmond",
+     "Norfolk"
+    ]
+   },
+   {
+    "name": "Washington",
+    "code": "WA",
+    "cities": [
+     "Seattle",
+     "Spokane",
+     "Tacoma",
+     "Olympia"
+    ]
+   },
+   {
+    "name": "West Virginia",
+    "code": "WV",
+    "cities": [
+     "Charleston",
+     "Huntington"
+    ]
+   },
+   {
+    "name": "Wisconsin",
+    "code": "WI",
+    "cities": [
+     "Milwaukee",
+     "Madison"
+    ]
+   },
+   {
+    "name": "Wyoming",
+    "code": "WY",
+    "cities": [
+     "Cheyenne",
+     "Casper"
+    ]
+   }
+  ],
+  "AE": [
+   {
+    "name": "Abu Dhabi",
+    "code": "AZ",
+    "cities": [
+     "Abu Dhabi",
+     "Al Ain"
+    ]
+   },
+   {
+    "name": "Dubai",
+    "code": "DU",
+    "cities": [
+     "Dubai",
+     "Jebel Ali"
+    ]
+   },
+   {
+    "name": "Sharjah",
+    "code": "SH",
+    "cities": [
+     "Sharjah"
+    ]
+   },
+   {
+    "name": "Ajman",
+    "code": "AJ",
+    "cities": [
+     "Ajman"
+    ]
+   },
+   {
+    "name": "Umm Al Quwain",
+    "code": "UQ",
+    "cities": [
+     "Umm Al Quwain"
+    ]
+   },
+   {
+    "name": "Ras Al Khaimah",
+    "code": "RK",
+    "cities": [
+     "Ras Al Khaimah"
+    ]
+   },
+   {
+    "name": "Fujairah",
+    "code": "FU",
+    "cities": [
+     "Fujairah"
+    ]
+   }
+  ],
+  "DE": [
+   {
+    "name": "Baden-Württemberg",
+    "code": "BW",
+    "cities": [
+     "Stuttgart",
+     "Karlsruhe",
+     "Mannheim",
+     "Freiburg"
+    ]
+   },
+   {
+    "name": "Bavaria",
+    "code": "BY",
+    "cities": [
+     "Munich",
+     "Nuremberg",
+     "Augsburg"
+    ]
+   },
+   {
+    "name": "Berlin",
+    "code": "BE",
+    "cities": [
+     "Berlin"
+    ]
+   },
+   {
+    "name": "Brandenburg",
+    "code": "BB",
+    "cities": [
+     "Potsdam",
+     "Cottbus"
+    ]
+   },
+   {
+    "name": "Bremen",
+    "code": "HB",
+    "cities": [
+     "Bremen",
+     "Bremerhaven"
+    ]
+   },
+   {
+    "name": "Hamburg",
+    "code": "HH",
+    "cities": [
+     "Hamburg"
+    ]
+   },
+   {
+    "name": "Hesse",
+    "code": "HE",
+    "cities": [
+     "Frankfurt am Main",
+     "Wiesbaden",
+     "Kassel",
+     "Darmstadt"
+    ]
+   },
+   {
+    "name": "Lower Saxony",
+    "code": "NI",
+    "cities": [
+     "Hanover",
+     "Braunschweig",
+     "Osnabrück"
+    ]
+   },
+   {
+    "name": "Mecklenburg-Vorpommern",
+    "code": "MV",
+    "cities": [
+     "Rostock",
+     "Schwerin"
+    ]
+   },
+   {
+    "name": "North Rhine-Westphalia",
+    "code": "NW",
+    "cities": [
+     "Cologne",
+     "Düsseldorf",
+     "Dortmund",
+     "Essen",
+     "Duisburg",
+     "Bonn"
+    ]
+   },
+   {
+    "name": "Rhineland-Palatinate",
+    "code": "RP",
+    "cities": [
+     "Mainz",
+     "Ludwigshafen",
+     "Koblenz"
+    ]
+   },
+   {
+    "name": "Saarland",
+    "code": "SL",
+    "cities": [
+     "Saarbrücken"
+    ]
+   },
+   {
+    "name": "Saxony",
+    "code": "SN",
+    "cities": [
+     "Dresden",
+     "Leipzig",
+     "Chemnitz"
+    ]
+   },
+   {
+    "name": "Saxony-Anhalt",
+    "code": "ST",
+    "cities": [
+     "Magdeburg",
+     "Halle"
+    ]
+   },
+   {
+    "name": "Schleswig-Holstein",
+    "code": "SH",
+    "cities": [
+     "Kiel",
+     "Lübeck"
+    ]
+   },
+   {
+    "name": "Thuringia",
+    "code": "TH",
+    "cities": [
+     "Erfurt",
+     "Jena"
+    ]
+   }
+  ],
+  "FR": [
+   {
+    "name": "Auvergne-Rhône-Alpes",
+    "code": "ARA",
+    "cities": [
+     "Lyon",
+     "Grenoble",
+     "Saint-Étienne"
+    ]
+   },
+   {
+    "name": "Bourgogne-Franche-Comté",
+    "code": "BFC",
+    "cities": [
+     "Dijon",
+     "Besançon"
+    ]
+   },
+   {
+    "name": "Brittany",
+    "code": "BRE",
+    "cities": [
+     "Rennes",
+     "Brest"
+    ]
+   },
+   {
+    "name": "Centre-Val de Loire",
+    "code": "CVL",
+    "cities": [
+     "Orléans",
+     "Tours"
+    ]
+   },
+   {
+    "name": "Corsica",
+    "code": "COR",
+    "cities": [
+     "Ajaccio",
+     "Bastia"
+    ]
+   },
+   {
+    "name": "Grand Est",
+    "code": "GES",
+    "cities": [
+     "Strasbourg",
+     "Reims",
+     "Metz"
+    ]
+   },
+   {
+    "name": "Hauts-de-France",
+    "code": "HDF",
+    "cities": [
+     "Lille",
+     "Amiens",
+     "Roubaix"
+    ]
+   },
+   {
+    "name": "Île-de-France",
+    "code": "IDF",
+    "cities": [
+     "Paris",
+     "Boulogne-Billancourt",
+     "Saint-Denis"
+    ]
+   },
+   {
+    "name": "Normandy",
+    "code": "NOR",
+    "cities": [
+     "Rouen",
+     "Le Havre",
+     "Caen"
+    ]
+   },
+   {
+    "name": "Nouvelle-Aquitaine",
+    "code": "NAQ",
+    "cities": [
+     "Bordeaux",
+     "Limoges",
+     "Poitiers"
+    ]
+   },
+   {
+    "name": "Occitanie",
+    "code": "OCC",
+    "cities": [
+     "Toulouse",
+     "Montpellier",
+     "Nîmes"
+    ]
+   },
+   {
+    "name": "Pays de la Loire",
+    "code": "PDL",
+    "cities": [
+     "Nantes",
+     "Angers",
+     "Le Mans"
+    ]
+   },
+   {
+    "name": "Provence-Alpes-Côte d'Azur",
+    "code": "PAC",
+    "cities": [
+     "Marseille",
+     "Nice",
+     "Toulon",
+     "Cannes"
+    ]
+   }
+  ],
+  "IT": [
+   {
+    "name": "Abruzzo",
+    "code": "ABR",
+    "cities": [
+     "L'Aquila",
+     "Pescara"
+    ]
+   },
+   {
+    "name": "Aosta Valley",
+    "code": "VDA",
+    "cities": [
+     "Aosta"
+    ]
+   },
+   {
+    "name": "Apulia",
+    "code": "PUG",
+    "cities": [
+     "Bari",
+     "Taranto",
+     "Foggia"
+    ]
+   },
+   {
+    "name": "Basilicata",
+    "code": "BAS",
+    "cities": [
+     "Potenza",
+     "Matera"
+    ]
+   },
+   {
+    "name": "Calabria",
+    "code": "CAL",
+    "cities": [
+     "Reggio Calabria",
+     "Catanzaro"
+    ]
+   },
+   {
+    "name": "Campania",
+    "code": "CAM",
+    "cities": [
+     "Naples",
+     "Salerno"
+    ]
+   },
+   {
+    "name": "Emilia-Romagna",
+    "code": "EMR",
+    "cities": [
+     "Bologna",
+     "Modena",
+     "Parma",
+     "Rimini"
+    ]
+   },
+   {
+    "name": "Friuli-Venezia Giulia",
+    "code": "FVG",
+    "cities": [
+     "Trieste",
+     "Udine"
+    ]
+   },
+   {
+    "name": "Lazio",
+    "code": "LAZ",
+    "cities": [
+     "Rome",
+     "Latina"
+    ]
+   },
+   {
+    "name": "Liguria",
+    "code": "LIG",
+    "cities": [
+     "Genoa",
+     "La Spezia"
+    ]
+   },
+   {
+    "name": "Lombardy",
+    "code": "LOM",
+    "cities": [
+     "Milan",
+     "Brescia",
+     "Bergamo",
+     "Como"
+    ]
+   },
+   {
+    "name": "Marche",
+    "code": "MAR",
+    "cities": [
+     "Ancona",
+     "Pesaro"
+    ]
+   },
+   {
+    "name": "Molise",
+    "code": "MOL",
+    "cities": [
+     "Campobasso"
+    ]
+   },
+   {
+    "name": "Piedmont",
+    "code": "PIE",
+    "cities": [
+     "Turin",
+     "Novara",
+     "Biella"
+    ]
+   },
+   {
+    "name": "Sardinia",
+    "code": "SAR",
+    "cities": [
+     "Cagliari",
+     "Sassari"
+    ]
+   },
+   {
+    "name": "Sicily",
+    "code": "SIC",
+    "cities": [
+     "Palermo",
+     "Catania",
+     "Messina"
+    ]
+   },
+   {
+    "name": "Trentino-South Tyrol",
+    "code": "TAA",
+    "cities": [
+     "Trento",
+     "Bolzano"
+    ]
+   },
+   {
+    "name": "Tuscany",
+    "code": "TOS",
+    "cities": [
+     "Florence",
+     "Prato",
+     "Pisa",
+     "Livorno"
+    ]
+   },
+   {
+    "name": "Umbria",
+    "code": "UMB",
+    "cities": [
+     "Perugia",
+     "Terni"
+    ]
+   },
+   {
+    "name": "Veneto",
+    "code": "VEN",
+    "cities": [
+     "Venice",
+     "Verona",
+     "Padua",
+     "Vicenza",
+     "Treviso"
+    ]
+   }
+  ],
+  "ES": [
+   {
+    "name": "Andalusia",
+    "code": "AN",
+    "cities": [
+     "Seville",
+     "Málaga",
+     "Córdoba",
+     "Granada"
+    ]
+   },
+   {
+    "name": "Aragon",
+    "code": "AR",
+    "cities": [
+     "Zaragoza",
+     "Huesca"
+    ]
+   },
+   {
+    "name": "Asturias",
+    "code": "AS",
+    "cities": [
+     "Oviedo",
+     "Gijón"
+    ]
+   },
+   {
+    "name": "Balearic Islands",
+    "code": "IB",
+    "cities": [
+     "Palma"
+    ]
+   },
+   {
+    "name": "Basque Country",
+    "code": "PV",
+    "cities": [
+     "Bilbao",
+     "San Sebastián",
+     "Vitoria-Gasteiz"
+    ]
+   },
+   {
+    "name": "Canary Islands",
+    "code": "CN",
+    "cities": [
+     "Las Palmas",
+     "Santa Cruz de Tenerife"
+    ]
+   },
+   {
+    "name": "Cantabria",
+    "code": "CB",
+    "cities": [
+     "Santander"
+    ]
+   },
+   {
+    "name": "Castile and León",
+    "code": "CL",
+    "cities": [
+     "Valladolid",
+     "Salamanca",
+     "Burgos"
+    ]
+   },
+   {
+    "name": "Castilla-La Mancha",
+    "code": "CM",
+    "cities": [
+     "Toledo",
+     "Albacete"
+    ]
+   },
+   {
+    "name": "Catalonia",
+    "code": "CT",
+    "cities": [
+     "Barcelona",
+     "Tarragona",
+     "Girona",
+     "Sabadell"
+    ]
+   },
+   {
+    "name": "Extremadura",
+    "code": "EX",
+    "cities": [
+     "Badajoz",
+     "Mérida"
+    ]
+   },
+   {
+    "name": "Galicia",
+    "code": "GA",
+    "cities": [
+     "Vigo",
+     "A Coruña",
+     "Santiago de Compostela"
+    ]
+   },
+   {
+    "name": "La Rioja",
+    "code": "RI",
+    "cities": [
+     "Logroño"
+    ]
+   },
+   {
+    "name": "Community of Madrid",
+    "code": "MD",
+    "cities": [
+     "Madrid",
+     "Móstoles",
+     "Alcalá de Henares"
+    ]
+   },
+   {
+    "name": "Region of Murcia",
+    "code": "MC",
+    "cities": [
+     "Murcia",
+     "Cartagena"
+    ]
+   },
+   {
+    "name": "Navarre",
+    "code": "NC",
+    "cities": [
+     "Pamplona"
+    ]
+   },
+   {
+    "name": "Valencian Community",
+    "code": "VC",
+    "cities": [
+     "Valencia",
+     "Alicante",
+     "Elche"
+    ]
+   }
+  ],
+  "NL": [
+   {
+    "name": "Drenthe",
+    "code": "DR",
+    "cities": [
+     "Assen",
+     "Emmen"
+    ]
+   },
+   {
+    "name": "Flevoland",
+    "code": "FL",
+    "cities": [
+     "Lelystad",
+     "Almere"
+    ]
+   },
+   {
+    "name": "Friesland",
+    "code": "FR",
+    "cities": [
+     "Leeuwarden"
+    ]
+   },
+   {
+    "name": "Gelderland",
+    "code": "GE",
+    "cities": [
+     "Arnhem",
+     "Nijmegen",
+     "Apeldoorn"
+    ]
+   },
+   {
+    "name": "Groningen",
+    "code": "GR",
+    "cities": [
+     "Groningen"
+    ]
+   },
+   {
+    "name": "Limburg",
+    "code": "LI",
+    "cities": [
+     "Maastricht",
+     "Venlo"
+    ]
+   },
+   {
+    "name": "North Brabant",
+    "code": "NB",
+    "cities": [
+     "Eindhoven",
+     "Tilburg",
+     "Breda",
+     "'s-Hertogenbosch"
+    ]
+   },
+   {
+    "name": "North Holland",
+    "code": "NH",
+    "cities": [
+     "Amsterdam",
+     "Haarlem",
+     "Alkmaar"
+    ]
+   },
+   {
+    "name": "Overijssel",
+    "code": "OV",
+    "cities": [
+     "Zwolle",
+     "Enschede"
+    ]
+   },
+   {
+    "name": "South Holland",
+    "code": "ZH",
+    "cities": [
+     "Rotterdam",
+     "The Hague",
+     "Leiden",
+     "Delft"
+    ]
+   },
+   {
+    "name": "Utrecht",
+    "code": "UT",
+    "cities": [
+     "Utrecht",
+     "Amersfoort"
+    ]
+   },
+   {
+    "name": "Zeeland",
+    "code": "ZE",
+    "cities": [
+     "Middelburg",
+     "Vlissingen"
+    ]
+   }
+  ],
+  "AU": [
+   {
+    "name": "New South Wales",
+    "code": "NSW",
+    "cities": [
+     "Sydney",
+     "Newcastle",
+     "Wollongong"
+    ]
+   },
+   {
+    "name": "Victoria",
+    "code": "VIC",
+    "cities": [
+     "Melbourne",
+     "Geelong",
+     "Ballarat"
+    ]
+   },
+   {
+    "name": "Queensland",
+    "code": "QLD",
+    "cities": [
+     "Brisbane",
+     "Gold Coast",
+     "Cairns",
+     "Townsville"
+    ]
+   },
+   {
+    "name": "South Australia",
+    "code": "SA",
+    "cities": [
+     "Adelaide"
+    ]
+   },
+   {
+    "name": "Western Australia",
+    "code": "WA",
+    "cities": [
+     "Perth",
+     "Fremantle"
+    ]
+   },
+   {
+    "name": "Tasmania",
+    "code": "TAS",
+    "cities": [
+     "Hobart",
+     "Launceston"
+    ]
+   },
+   {
+    "name": "Australian Capital Territory",
+    "code": "ACT",
+    "cities": [
+     "Canberra"
+    ]
+   },
+   {
+    "name": "Northern Territory",
+    "code": "NT",
+    "cities": [
+     "Darwin",
+     "Alice Springs"
+    ]
+   }
+  ],
+  "CA": [
+   {
+    "name": "Alberta",
+    "code": "AB",
+    "cities": [
+     "Calgary",
+     "Edmonton"
+    ]
+   },
+   {
+    "name": "British Columbia",
+    "code": "BC",
+    "cities": [
+     "Vancouver",
+     "Victoria",
+     "Surrey"
+    ]
+   },
+   {
+    "name": "Manitoba",
+    "code": "MB",
+    "cities": [
+     "Winnipeg"
+    ]
+   },
+   {
+    "name": "New Brunswick",
+    "code": "NB",
+    "cities": [
+     "Moncton",
+     "Saint John",
+     "Fredericton"
+    ]
+   },
+   {
+    "name": "Newfoundland and Labrador",
+    "code": "NL",
+    "cities": [
+     "St. John's"
+    ]
+   },
+   {
+    "name": "Nova Scotia",
+    "code": "NS",
+    "cities": [
+     "Halifax"
+    ]
+   },
+   {
+    "name": "Ontario",
+    "code": "ON",
+    "cities": [
+     "Toronto",
+     "Ottawa",
+     "Mississauga",
+     "Hamilton",
+     "London"
+    ]
+   },
+   {
+    "name": "Prince Edward Island",
+    "code": "PE",
+    "cities": [
+     "Charlottetown"
+    ]
+   },
+   {
+    "name": "Quebec",
+    "code": "QC",
+    "cities": [
+     "Montreal",
+     "Quebec City",
+     "Laval",
+     "Gatineau"
+    ]
+   },
+   {
+    "name": "Saskatchewan",
+    "code": "SK",
+    "cities": [
+     "Saskatoon",
+     "Regina"
+    ]
+   },
+   {
+    "name": "Northwest Territories",
+    "code": "NT",
+    "cities": [
+     "Yellowknife"
+    ]
+   },
+   {
+    "name": "Nunavut",
+    "code": "NU",
+    "cities": [
+     "Iqaluit"
+    ]
+   },
+   {
+    "name": "Yukon",
+    "code": "YT",
+    "cities": [
+     "Whitehorse"
+    ]
+   }
+  ],
+  "JP": [
+   {
+    "name": "Tokyo",
+    "code": "13",
+    "cities": [
+     "Tokyo",
+     "Shinjuku",
+     "Shibuya"
+    ]
+   },
+   {
+    "name": "Osaka",
+    "code": "27",
+    "cities": [
+     "Osaka",
+     "Sakai"
+    ]
+   },
+   {
+    "name": "Kanagawa",
+    "code": "14",
+    "cities": [
+     "Yokohama",
+     "Kawasaki"
+    ]
+   },
+   {
+    "name": "Aichi",
+    "code": "23",
+    "cities": [
+     "Nagoya",
+     "Toyota"
+    ]
+   },
+   {
+    "name": "Hokkaido",
+    "code": "01",
+    "cities": [
+     "Sapporo",
+     "Hakodate"
+    ]
+   },
+   {
+    "name": "Fukuoka",
+    "code": "40",
+    "cities": [
+     "Fukuoka",
+     "Kitakyushu"
+    ]
+   },
+   {
+    "name": "Hyogo",
+    "code": "28",
+    "cities": [
+     "Kobe",
+     "Himeji"
+    ]
+   },
+   {
+    "name": "Kyoto",
+    "code": "26",
+    "cities": [
+     "Kyoto"
+    ]
+   },
+   {
+    "name": "Saitama",
+    "code": "11",
+    "cities": [
+     "Saitama",
+     "Kawaguchi"
+    ]
+   },
+   {
+    "name": "Chiba",
+    "code": "12",
+    "cities": [
+     "Chiba",
+     "Funabashi"
+    ]
+   },
+   {
+    "name": "Hiroshima",
+    "code": "34",
+    "cities": [
+     "Hiroshima"
+    ]
+   },
+   {
+    "name": "Miyagi",
+    "code": "04",
+    "cities": [
+     "Sendai"
+    ]
+   },
+   {
+    "name": "Shizuoka",
+    "code": "22",
+    "cities": [
+     "Shizuoka",
+     "Hamamatsu"
+    ]
+   },
+   {
+    "name": "Niigata",
+    "code": "15",
+    "cities": [
+     "Niigata"
+    ]
+   },
+   {
+    "name": "Okinawa",
+    "code": "47",
+    "cities": [
+     "Naha"
+    ]
+   }
+  ]
+ }
+}

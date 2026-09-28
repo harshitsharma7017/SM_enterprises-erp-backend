@@ -1,5 +1,6 @@
 import { debitNoteService } from './debit-note.service.js';
 import { debitNoteRepository } from './debit-note.repository.js';
+import { documentArchive } from '../../services/document-archive.service.js';
 
 const FILTERS = ['status', 'company_id', 'supplier_id', 'purchase_order_id', 'inward_entry_id', 'lot_id', 'quality_inspection_id', 'supplier_return_id', 'po', 'grn', 'lot', 'date_from', 'date_to', 'search', 'page', 'limit'];
 
@@ -62,6 +63,7 @@ export const debitNoteController = {
   post: async (req, res, next) => {
     try {
       await debitNoteService.post(req.params.id, req.user.id);
+      await documentArchive.capture('debit_note', Number(req.params.id), 'posted', req.user.id);
       const note = await debitNoteRepository.findById(req.params.id);
       res.json({ success: true, message: `Debit note ${note.debit_note_no} posted.`, data: note });
     } catch (error) {

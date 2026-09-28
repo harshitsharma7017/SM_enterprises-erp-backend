@@ -37,7 +37,7 @@ const validateCommon = async (req, isUpdate = false) => {
   let weSupplyMaterial = toBool(body.we_supply_material);
   let requiresSampleApproval = toBool(body.requires_sample_approval);
   let buyerIds = body.buyer_ids;
-  let clientDetails = body.client_details; // accepted, never persisted — see service
+  let clientDetails = body.client_details; // the jobber's "Buyer Details"
 
   // Col E — GST only applies to a registered supplier type.
   const registered = await supplierRepository.supplierTypeIsRegistered(body.supplier_type_id);
@@ -393,10 +393,8 @@ const validateCommon = async (req, isUpdate = false) => {
     }
   }
 
-  // client_details — accepted (jobwork-only, already nulled above when not
-  // applicable), but the locked schema has no suppliers.client_details
-  // column, so it is never persisted. No shape validation needed beyond
-  // basic string sanity.
+  // client_details — the jobber's "Buyer Details" (jobwork-only, already
+  // nulled above when not applicable); persisted in suppliers.client_details.
   if (!isBlank(clientDetails)) {
     if (typeof clientDetails !== 'string' || clientDetails.length > 2000) {
       errors.push('Client details cannot exceed 2000 characters');
@@ -415,8 +413,7 @@ const validateCommon = async (req, isUpdate = false) => {
     }
   }
 
-  // comments — accepted for API compatibility, shape-checked, NEVER persisted
-  // (no suppliers.comments column on the locked schema).
+  // comments — persisted (suppliers.comments).
   if (!isBlank(body.comments)) {
     if (typeof body.comments !== 'string' || body.comments.length > 1000) {
       errors.push('Comments cannot exceed 1000 characters');

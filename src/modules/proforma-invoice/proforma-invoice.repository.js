@@ -6,9 +6,36 @@ import { orderFulfilmentRepository } from '../order-confirmation/order-fulfilmen
 const isSet = (v) => v !== undefined && v !== null && v !== '';
 const isId = (v) => isSet(v) && Number.isInteger(Number(v)) && Number(v) > 0;
 
+/** Quantity of an order item invoiced on ISSUED invoices raised against a PI. */
+const INVOICED_ON_PI = (piColumn, itemColumn) => `
+  COALESCE((SELECT SUM(ii.quantity) FROM invoice_items ii JOIN invoices i ON i.id = ii.invoice_id
+            WHERE i.proforma_invoice_id = ${piColumn} AND i.status = 'issued' AND ii.order_confirmation_item_id = ${itemColumn}), 0)`;
+
+/**
+ * Where a PI stands in Customer Order → PI → Confirmation / Payment → Final
+ * Invoice, from what is recorded (nothing is computed from money):
+ *   draft / cancelled — its status;
+ *   invoiced          — every line fully covered by issued invoices on this PI;
+ *   partly_invoiced   — some quantity invoiced;
+ *   payment_referenced / confirmed — a payment / confirmation reference recorded;
+ *   issued            — sent, nothing recorded back yet.
+ */
+const STAGE = `
+  CASE WHEN pi.status <> 'issued' THEN pi.status
+       WHEN NOT EXISTS (SELECT 1 FROM proforma_invoice_items x WHERE x.proforma_invoice_id = pi.id
+                        AND x.quantity > ${INVOICED_ON_PI('pi.id', 'x.order_confirmation_item_id')})
+            AND EXISTS (SELECT 1 FROM proforma_invoice_items x WHERE x.proforma_invoice_id = pi.id) THEN 'invoiced'
+       WHEN EXISTS (SELECT 1 FROM invoices i WHERE i.proforma_invoice_id = pi.id AND i.status = 'issued') THEN 'partly_invoiced'
+       WHEN pi.payment_reference IS NOT NULL AND pi.payment_reference <> '' THEN 'payment_referenced'
+       WHEN pi.confirmation_reference IS NOT NULL AND pi.confirmation_reference <> '' THEN 'confirmed'
+       ELSE 'issued' END`;
+export const PI_STAGES = ['draft', 'issued', 'confirmed', 'payment_referenced', 'partly_invoiced', 'invoiced', 'cancelled'];
+
 const PI_SELECT = `
-  SELECT pi.*, cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
-         b.company_name AS buyer_name, oc.oc_num, oc.oc_date, oc.buyer_ref AS order_buyer_ref, cur.iso_code AS currency_code,
+  SELECT pi.*, ${STAGE} AS stage,
+         (SELECT SUM(ii.amount) FROM invoice_items ii JOIN invoices i ON i.id = ii.invoice_id
+          WHERE i.proforma_invoice_id = pi.id AND i.status = 'issued') AS invoiced_amount, cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
+         b.company_name AS buyer_name, oc.oc_num, oc.oc_date, oc.buyer_ref AS order_buyer_ref, cur.iso_code AS currency_code, cur.name AS currency_name,
          u1.name AS creator_name, u2.name AS issuer_name, u3.name AS canceller_name, u4.name AS commercial_updater_name,
          (SELECT COUNT(*) FROM proforma_invoice_items x WHERE x.proforma_invoice_id = pi.id) AS lines_count,
          (SELECT SUM(x.amount) FROM proforma_invoice_items x WHERE x.proforma_invoice_id = pi.id) AS total_amount,
@@ -27,7 +54,8 @@ const PI_SELECT = `
 
 const ITEM_SELECT = `
   SELECT pii.*, p.name AS product_name, p.item_group_code, COALESCE(u.decimal_places, 0) AS uom_decimal_places,
-         oci.design_no, oci.qty AS item_ordered_quantity
+         oci.design_no, oci.qty AS item_ordered_quantity,
+         ${INVOICED_ON_PI('pii.proforma_invoice_id', 'pii.order_confirmation_item_id')} AS invoiced_quantity
   FROM proforma_invoice_items pii
   JOIN order_confirmation_items oci ON oci.id = pii.order_confirmation_item_id
   LEFT JOIN products p ON p.id = pii.product_id
@@ -68,6 +96,10 @@ export const proformaInvoiceRepository = {
       query += ' AND pi.pi_date <= ?';
       params.push(filters.date_to);
     }
+    if (PI_STAGES.includes(filters.stage)) {
+      query += ` AND ${STAGE} = ?`;
+      params.push(filters.stage);
+    }
     if (filters.search) {
       const columns = ['pi.pi_no', 'pi.reference', 'pi.confirmation_reference', 'pi.payment_reference', 'oc.oc_num', 'b.company_name'];
       query += ` AND (${columns.map((c) => `${c} LIKE ?`).join(' OR ')})`;
@@ -97,11 +129,12 @@ export const proformaInvoiceRepository = {
     pi.items = items;
     const allocations = await orderFulfilmentRepository.findAllocations("a.order_confirmation_id = ? AND a.status = 'active'", [pi.order_confirmation_id]);
     const traces = {};
+    // Bought-in / opening-stock allocations have no processing record, so no production trace.
     for (const a of allocations) {
-      if (!traces[a.processing_record_id]) traces[a.processing_record_id] = await findProductionSource(a.processing_record_id);
+      if (a.processing_record_id && !traces[a.processing_record_id]) traces[a.processing_record_id] = await findProductionSource(a.processing_record_id);
     }
     pi.trace = {
-      allocations: allocations.map((a) => ({ ...a, production: traces[a.processing_record_id] })),
+      allocations: allocations.map((a) => ({ ...a, production: a.processing_record_id ? traces[a.processing_record_id] : null })),
       dispatches: (await orderFulfilmentRepository.findDispatchLines(pi.order_confirmation_id)).filter((d) => d.status === 'posted'),
     };
     const [invoices] = await pool.query(`

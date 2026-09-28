@@ -68,11 +68,10 @@ export const productService = {
         fabric_length_mtr: isBlank(data.fabric_length_mtr) ? null : data.fabric_length_mtr,
         fabric_width_inch: isBlank(data.fabric_width_inch) ? null : data.fabric_width_inch,
         sq_mtr_per_unit: productService.computeSqMtrPerUnit(data.fabric_length_mtr, data.fabric_width_inch),
-        // `comments` is intentionally never read from `data` here — the
-        // current locked schema has no products.comments column.
         description: data.description || null,
         status: data.status,
         remarks: data.remarks || null,
+        comments: data.comments || null,
         created_by: userId,
         updated_by: userId
       };
@@ -131,6 +130,7 @@ export const productService = {
         description: data.description || null,
         status: data.status,
         remarks: data.remarks || null,
+        comments: data.comments || null,
         updated_by: userId
       };
 

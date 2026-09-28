@@ -6,6 +6,7 @@ import { quantity } from '../../services/quantity.service.js';
 import { companyScope } from '../../services/company-scope.service.js';
 import { inventoryRepository } from '../inventory/inventory.repository.js';
 import { nextMovementNo } from '../inventory/inventory.service.js';
+import { productionPlanService } from '../production-plan/production-plan.service.js';
 
 const PROCESSING_SERIES = { module: 'processing', prefix: 'PRC/' };
 // Finished-material lots share the lot series with received lots.
@@ -259,9 +260,12 @@ export const processingService = {
       const items = await processingRepository.lockItems(connection, id);
       const values = checkLineQuantities(items, data.items);
       const output = await checkOutput(connection, record.company_id, data);
+      // Optional booking against a production plan line (requirement 12).
+      const planItemId = await productionPlanService.checkBooking(connection, record.company_id, data.production_plan_item_id, output.produced_product_id);
       await processingRepository.update(connection, id, {
         start_date: data.start_date,
         ...output,
+        production_plan_item_id: planItemId,
         remarks: text(data.remarks),
         user_id: userId,
       });

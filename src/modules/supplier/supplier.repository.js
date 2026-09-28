@@ -275,8 +275,8 @@ export const supplierRepository = {
         discount_percent, credit_days, bank_name, account_number, ifsc_code,
         agent_id, agent_commission_type, agent_commission_value,
         we_supply_material, requires_sample_approval, default_delivery_mode,
-        status, remarks, created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        status, remarks, comments, client_details, created_by, updated_by, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
         data.company_id, data.display_code, data.party_type, data.company_name, data.name_on_bill, data.supplier_type_id,
         data.gst_number, data.pan_number, data.is_msme ? 1 : 0, data.msme_registration_no,
@@ -284,7 +284,7 @@ export const supplierRepository = {
         data.discount_percent, data.credit_days, data.bank_name, data.account_number, data.ifsc_code,
         data.agent_id, data.agent_commission_type, data.agent_commission_value,
         data.we_supply_material ? 1 : 0, data.requires_sample_approval ? 1 : 0, data.default_delivery_mode,
-        data.status, data.remarks, data.created_by, data.updated_by
+        data.status, data.remarks, data.comments, data.client_details, data.created_by, data.updated_by
       ]
     );
     return result.insertId;
@@ -299,7 +299,7 @@ export const supplierRepository = {
         discount_percent = ?, credit_days = ?, bank_name = ?, account_number = ?, ifsc_code = ?,
         agent_id = ?, agent_commission_type = ?, agent_commission_value = ?,
         we_supply_material = ?, requires_sample_approval = ?, default_delivery_mode = ?,
-        status = ?, remarks = ?, updated_by = ?, updated_at = NOW()
+        status = ?, remarks = ?, comments = ?, client_details = ?, updated_by = ?, updated_at = NOW()
       WHERE id = ? AND deleted_at IS NULL`,
       [
         data.company_id, data.display_code, data.party_type, data.company_name, data.name_on_bill, data.supplier_type_id,
@@ -308,7 +308,7 @@ export const supplierRepository = {
         data.discount_percent, data.credit_days, data.bank_name, data.account_number, data.ifsc_code,
         data.agent_id, data.agent_commission_type, data.agent_commission_value,
         data.we_supply_material ? 1 : 0, data.requires_sample_approval ? 1 : 0, data.default_delivery_mode,
-        data.status, data.remarks, data.updated_by, id
+        data.status, data.remarks, data.comments, data.client_details, data.updated_by, id
       ]
     );
   },

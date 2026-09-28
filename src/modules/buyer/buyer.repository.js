@@ -98,7 +98,8 @@ export const buyerRepository = {
         co.name AS country_name, co.iso_code AS country_iso_code,
         p.name AS port_name,
         a.name AS agent_name, a.display_code AS agent_display_code,
-        pt.name AS payment_term_name,
+        st.name AS state_name, ci.name AS city_name, dsg.name AS contact_designation_name,
+        pt.name AS payment_term_name, pt.has_split AS payment_term_has_split,
         it.code AS incoterm_code, it.name AS incoterm_name,
         cur.iso_code AS currency_iso_code, cur.name AS currency_name,
         sm.name AS shipment_method_name,
@@ -107,6 +108,9 @@ export const buyerRepository = {
         cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label
       FROM buyers b
       LEFT JOIN countries co ON co.id = b.country_id
+      LEFT JOIN states st ON st.id = b.state_id
+      LEFT JOIN cities ci ON ci.id = b.city_id
+      LEFT JOIN designations dsg ON dsg.id = b.contact_designation_id
       LEFT JOIN ports p ON p.id = b.port_id
       LEFT JOIN agents a ON a.id = b.agent_id
       LEFT JOIN payment_terms pt ON pt.id = b.payment_term_id
@@ -125,17 +129,17 @@ export const buyerRepository = {
   create: async (connection, data) => {
     const [result] = await connection.query(
       `INSERT INTO buyers (
-        company_id, display_code, company_name, name_on_export_invoice, contact_person, email, mobile,
-        gst_vat_no, address, country_id, pincode, port_id, agent_id,
-        agent_commission_type, agent_commission_value, payment_term_id, incoterm_id, currency_id,
-        shipment_method_id, bank_name, account_number, swift_code, status, remarks,
+        company_id, display_code, company_name, name_on_export_invoice, contact_person, contact_designation_id, email, mobile,
+        gst_vat_no, address, country_id, state_id, city_id, pincode, port_id, agent_id,
+        agent_commission_type, agent_commission_value, payment_term_id, advance_percent, sight_percent, incoterm_id, currency_id,
+        shipment_method_id, bank_name, account_number, swift_code, status, remarks, comments,
         created_by, updated_by, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
       [
-        data.company_id, data.display_code, data.company_name, data.name_on_export_invoice, data.contact_person, data.email, data.mobile,
-        data.gst_vat_no, data.address, data.country_id, data.pincode, data.port_id, data.agent_id,
-        data.agent_commission_type, data.agent_commission_value, data.payment_term_id, data.incoterm_id, data.currency_id,
-        data.shipment_method_id, data.bank_name, data.account_number, data.swift_code, data.status, data.remarks,
+        data.company_id, data.display_code, data.company_name, data.name_on_export_invoice, data.contact_person, data.contact_designation_id, data.email, data.mobile,
+        data.gst_vat_no, data.address, data.country_id, data.state_id, data.city_id, data.pincode, data.port_id, data.agent_id,
+        data.agent_commission_type, data.agent_commission_value, data.payment_term_id, data.advance_percent, data.sight_percent, data.incoterm_id, data.currency_id,
+        data.shipment_method_id, data.bank_name, data.account_number, data.swift_code, data.status, data.remarks, data.comments,
         data.created_by, data.updated_by
       ]
     );
@@ -145,17 +149,17 @@ export const buyerRepository = {
   update: async (connection, id, data) => {
     await connection.query(
       `UPDATE buyers SET
-        company_id = ?, company_name = ?, name_on_export_invoice = ?, contact_person = ?, email = ?, mobile = ?,
-        gst_vat_no = ?, address = ?, country_id = ?, pincode = ?, port_id = ?, agent_id = ?,
-        agent_commission_type = ?, agent_commission_value = ?, payment_term_id = ?, incoterm_id = ?, currency_id = ?,
-        shipment_method_id = ?, bank_name = ?, account_number = ?, swift_code = ?, status = ?, remarks = ?,
+        company_id = ?, company_name = ?, name_on_export_invoice = ?, contact_person = ?, contact_designation_id = ?, email = ?, mobile = ?,
+        gst_vat_no = ?, address = ?, country_id = ?, state_id = ?, city_id = ?, pincode = ?, port_id = ?, agent_id = ?,
+        agent_commission_type = ?, agent_commission_value = ?, payment_term_id = ?, advance_percent = ?, sight_percent = ?, incoterm_id = ?, currency_id = ?,
+        shipment_method_id = ?, bank_name = ?, account_number = ?, swift_code = ?, status = ?, remarks = ?, comments = ?,
         updated_by = ?, updated_at = NOW()
       WHERE id = ? AND deleted_at IS NULL`,
       [
-        data.company_id, data.company_name, data.name_on_export_invoice, data.contact_person, data.email, data.mobile,
-        data.gst_vat_no, data.address, data.country_id, data.pincode, data.port_id, data.agent_id,
-        data.agent_commission_type, data.agent_commission_value, data.payment_term_id, data.incoterm_id, data.currency_id,
-        data.shipment_method_id, data.bank_name, data.account_number, data.swift_code, data.status, data.remarks,
+        data.company_id, data.company_name, data.name_on_export_invoice, data.contact_person, data.contact_designation_id, data.email, data.mobile,
+        data.gst_vat_no, data.address, data.country_id, data.state_id, data.city_id, data.pincode, data.port_id, data.agent_id,
+        data.agent_commission_type, data.agent_commission_value, data.payment_term_id, data.advance_percent, data.sight_percent, data.incoterm_id, data.currency_id,
+        data.shipment_method_id, data.bank_name, data.account_number, data.swift_code, data.status, data.remarks, data.comments,
         data.updated_by, id
       ]
     );
@@ -182,6 +186,26 @@ export const buyerRepository = {
   categoryExists: async (id) => {
     const [rows] = await pool.query('SELECT 1 FROM categories WHERE id = ?', [id]);
     return rows.length > 0;
+  },
+
+  stateInCountry: async (stateId, countryId) => {
+    const [rows] = await pool.query('SELECT 1 FROM states WHERE id = ? AND country_id = ?', [stateId, countryId]);
+    return rows.length > 0;
+  },
+
+  cityInState: async (cityId, stateId) => {
+    const [rows] = await pool.query('SELECT 1 FROM cities WHERE id = ? AND state_id = ?', [cityId, stateId]);
+    return rows.length > 0;
+  },
+
+  designationExistsActive: async (id) => {
+    const [rows] = await pool.query("SELECT 1 FROM designations WHERE id = ? AND status = 'active'", [id]);
+    return rows.length > 0;
+  },
+
+  paymentTermHasSplit: async (id) => {
+    const [rows] = await pool.query('SELECT has_split FROM payment_terms WHERE id = ?', [id]);
+    return rows.length > 0 && !!rows[0].has_split;
   },
 
   countryExists: async (id) => {
@@ -342,7 +366,7 @@ export const buyerRepository = {
 
   getPaymentTermsForSide: async (side) => {
     const [rows] = await pool.query(
-      "SELECT id, name, days FROM payment_terms WHERE applies_to IN (?, 'both') AND status = 'active' ORDER BY name ASC",
+      "SELECT id, name, days, has_split FROM payment_terms WHERE applies_to IN (?, 'both') AND status = 'active' ORDER BY name ASC",
       [side]
     );
     return rows;

@@ -1,6 +1,7 @@
 import { purchaseOrderService } from './purchase-order.service.js';
 import { purchaseOrderRepository } from './purchase-order.repository.js';
 import { garmentPoService, GARMENT_ORIGINS } from './garment-po.service.js';
+import { documentArchive } from '../../services/document-archive.service.js';
 
 export const purchaseOrderController = {
   index: async (req, res, next) => {
@@ -123,6 +124,7 @@ export const purchaseOrderController = {
   confirm: async (req, res, next) => {
     try {
       const po = await garmentPoService.confirm(req.params.id, req.user.id);
+      await documentArchive.capture('purchase_order', Number(req.params.id), 'confirmed', req.user.id);
       res.json({ success: true, message: `Purchase Order ${po.po_num} confirmed.`, data: po });
     } catch (error) {
       next(error);

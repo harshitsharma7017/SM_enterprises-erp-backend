@@ -1,5 +1,6 @@
 import { supplierReturnService } from './supplier-return.service.js';
 import { supplierReturnRepository } from './supplier-return.repository.js';
+import { documentArchive } from '../../services/document-archive.service.js';
 
 const FILTERS = ['status', 'company_id', 'supplier_id', 'purchase_order_id', 'inward_entry_id', 'lot_id', 'quality_inspection_id', 'po', 'grn', 'lot', 'date_from', 'date_to', 'search', 'page', 'limit'];
 
@@ -51,6 +52,7 @@ export const supplierReturnController = {
   post: async (req, res, next) => {
     try {
       await supplierReturnService.post(req.params.id, req.user.id);
+      await documentArchive.capture('supplier_return', Number(req.params.id), 'posted', req.user.id);
       const ret = await supplierReturnRepository.findById(req.params.id);
       res.json({ success: true, message: `Supplier return ${ret.return_no} posted.`, data: ret });
     } catch (error) {

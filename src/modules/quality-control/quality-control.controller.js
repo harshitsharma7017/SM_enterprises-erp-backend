@@ -1,5 +1,6 @@
 import { qualityControlService } from './quality-control.service.js';
 import { qualityControlRepository } from './quality-control.repository.js';
+import { documentArchive } from '../../services/document-archive.service.js';
 
 const FILTERS = ['status', 'company_id', 'supplier_id', 'purchase_order_id', 'inward_entry_id', 'lot_id', 'po', 'grn', 'lot', 'date_from', 'date_to', 'search', 'page', 'limit'];
 
@@ -62,6 +63,7 @@ export const qualityControlController = {
   complete: async (req, res, next) => {
     try {
       await qualityControlService.complete(req.params.id, req.user.id);
+      await documentArchive.capture('quality_inspection', Number(req.params.id), 'completed', req.user.id);
       const qc = await qualityControlRepository.findById(req.params.id);
       res.json({ success: true, message: `Inspection ${qc.qc_no} completed.`, data: qc });
     } catch (error) {

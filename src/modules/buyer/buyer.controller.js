@@ -29,7 +29,10 @@ export const buyerController = {
   // GET /buyers/create — dropdown/default data for a blank create form.
   create: async (req, res, next) => {
     try {
-      const formData = await buyerService.getFormData();
+      const formData = await buyerService.getFormData(
+        req.query.country_id ? Number(req.query.country_id) : undefined,
+        req.query.state_id ? Number(req.query.state_id) : undefined
+      );
 
       res.status(200).json({
         success: true,
@@ -78,7 +81,11 @@ export const buyerController = {
         return res.status(404).json({ success: false, message: 'Buyer not found' });
       }
 
-      const formData = await buyerService.getFormData();
+      // The buyer's own country / state (even when null), unless the cascade asks for another.
+      const formData = await buyerService.getFormData(
+        req.query.country_id ? Number(req.query.country_id) : (buyer.country_id ?? null),
+        req.query.state_id ? Number(req.query.state_id) : (buyer.state_id ?? undefined)
+      );
 
       res.status(200).json({
         success: true,

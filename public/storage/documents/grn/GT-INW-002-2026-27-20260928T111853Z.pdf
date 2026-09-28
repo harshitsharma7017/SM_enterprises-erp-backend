@@ -1,0 +1,83 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [7 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Oblique /Encoding /WinAnsiEncoding >>
+endobj
+6 0 obj
+<< /Length 2231 >>
+stream
+0.12 G 1.2 w 36 778.89 m 559.28 778.89 l S
+0.93 g 36 744.89 523.28 26 re f
+BT /F2 13 Tf 0.12 g 46 752.49 Td (INWARD ENTRY) Tj ET
+BT /F2 11 Tf 0.12 g 444.74 754.09 Td (GT/INW/002/2026-27) Tj ET
+0.72 G 0.5 w 36 694.89 523.28 40 re S
+0.93 g 36 719.89 523.28 15 re f
+BT /F2 7.5 Tf 0.42 g 44 724.89 Td (RECEIVED FROM) Tj ET
+BT /F2 9.5 Tf 0.12 g 44 706.29 Td (Supplier 1 \(S1\)) Tj ET
+0.72 G 0.5 w 36 653.89 130.82 31 re S
+BT /F1 7 Tf 0.42 g 42 675.29 Td (GRN number) Tj ET
+BT /F2 9 Tf 0.12 g 42 663.69 Td (GT/INW/002/2026-27) Tj ET
+0.72 G 0.5 w 166.82 653.89 130.82 31 re S
+BT /F1 7 Tf 0.42 g 172.82 675.29 Td (GRN date) Tj ET
+BT /F2 9 Tf 0.12 g 172.82 663.69 Td (21-09-2026) Tj ET
+0.72 G 0.5 w 297.64 653.89 130.82 31 re S
+BT /F1 7 Tf 0.42 g 303.64 675.29 Td (Purchase order) Tj ET
+BT /F2 9 Tf 0.12 g 303.64 663.69 Td (GT/PO/003/2026-27) Tj ET
+0.72 G 0.5 w 428.46 653.89 130.82 31 re S
+BT /F1 7 Tf 0.42 g 434.46 675.29 Td (QC status) Tj ET
+BT /F2 9 Tf 0.12 g 434.46 663.69 Td (approved) Tj ET
+0.2 g 36 624.89 523.28 17 re f
+BT /F2 7.5 Tf 1 g 45.15 631.89 Td (#) Tj ET
+BT /F2 7.5 Tf 1 g 62.47 631.89 Td (Product) Tj ET
+BT /F2 7.5 Tf 1 g 242.25 631.89 Td (Lot) Tj ET
+BT /F2 7.5 Tf 1 g 354.68 631.89 Td (Width) Tj ET
+BT /F2 7.5 Tf 1 g 383.5 631.89 Td (Mill lot) Tj ET
+BT /F2 7.5 Tf 1 g 483.82 631.89 Td (Received) Tj ET
+BT /F2 7.5 Tf 1 g 524.76 631.89 Td (Unit) Tj ET
+BT /F1 8.5 Tf 0.12 g 44.87 614.09 Td (1) Tj ET
+0.72 G 0.4 w 36 606.39 m 559.28 606.39 l S
+0.72 G 0.5 w 36 606.39 523.28 0.01 re S
+0.42 G 0.6 w 46 550.39 m 189.76 550.39 l S
+BT /F1 8 Tf 0.12 g 82.54 539.99 Td (Received by \(Store\)) Tj ET
+0.42 G 0.6 w 225.76 550.39 m 369.52 550.39 l S
+BT /F1 8 Tf 0.12 g 276.52 539.99 Td (Checked by) Tj ET
+BT /F2 8.5 Tf 0.12 g 469.37 583.59 Td (For ) Tj ET
+0.42 G 0.6 w 405.52 550.39 m 549.28 550.39 l S
+BT /F1 8 Tf 0.12 g 440.27 539.99 Td (Authorised Signatory) Tj ET
+BT /F3 7 Tf 0.42 g 36 518.79 Td (Received quantity is before quality inspection; accepted / rejected quantities are on the QC report.) Tj ET
+0.72 G 0.5 w 36 38 m 559.28 38 l S
+BT /F1 7 Tf 0.42 g 36 28.4 Td (This is a computer-generated document.) Tj ET
+BT /F1 7 Tf 0.42 g 264.38 28.4 Td (GT/INW/002/2026-27) Tj ET
+BT /F1 7 Tf 0.42 g 523.48 28.4 Td (Page 1 of 1) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 6 0 R >>
+endobj
+xref
+0 8
+0000000000 65535 f 
+0000000015 00000 n 
+0000000064 00000 n 
+0000000121 00000 n 
+0000000218 00000 n 
+0000000320 00000 n 
+0000000425 00000 n 
+0000002708 00000 n 
+trailer
+<< /Size 8 /Root 1 0 R >>
+startxref
+2860
+%%EOF

@@ -53,6 +53,8 @@ import userRoutes from './modules/user-management/user.routes.js';
 import roleRoutes from './modules/user-management/role.routes.js';
 import companyRoutes from './modules/company/company.routes.js';
 import { storage, isPublicKey, LOCAL_ROOT as storageRoot } from './services/storage.service.js';
+import productionPlanRoutes from './modules/production-plan/production-plan.routes.js';
+import documentRoutes from './modules/document/document.routes.js';
 
 const app = express();
 
@@ -70,19 +72,32 @@ app.use(morgan('dev'));
 // untouched.
 // With STORAGE_DRIVER=s3 the files live in a private bucket (R2 / S3) and
 // the same /storage/<key> link redirects to a short-lived signed URL, so the
-// stored paths and every frontend link stay unchanged.
+// stored paths and every frontend link stay unchanged. Either way only the
+// upload folders are reachable here; archived documents and backups are
+// served through the authenticated API.
+const storageKeyOf = (req) => {
+  try {
+    return decodeURIComponent(req.path.replace(/^\//, ''));
+  } catch {
+    return ''; // malformed escape → not a key
+  }
+};
 app.use('/storage', (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
 }, storage.driverName() === 's3'
   ? (req, res) => {
-      const key = decodeURIComponent(req.path.replace(/^\//, ''));
+      const key = storageKeyOf(req);
       if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).end();
       if (!isPublicKey(key)) return res.status(404).end();
       res.setHeader('Cache-Control', 'private, max-age=60');
       res.redirect(302, storage.signedUrl(key));
     }
-  : express.static(storageRoot));
+  : (() => {
+      // Local disk: the same rule — only the upload folders are served.
+      const serve = express.static(storageRoot);
+      return (req, res, next) => (isPublicKey(storageKeyOf(req)) ? serve(req, res, next) : res.status(404).end());
+    })());
 
 // Routes
 app.use('/api', healthRoutes);
@@ -110,6 +125,7 @@ app.use('/api/procurement/lots', lotRoutes);
 app.use('/api/procurement/supplier-returns', supplierReturnRoutes);
 app.use('/api/quality-control', qualityControlRoutes);
 app.use('/api/inventory', inventoryRoutes);
+app.use('/api/production/plans', productionPlanRoutes);
 app.use('/api/production', productionRoutes);
 app.use('/api/dispatches', dispatchRoutes);
 app.use('/api/barcodes', barcodeRoutes);
@@ -122,6 +138,7 @@ app.use('/api/finance/proforma-invoices', proformaInvoiceRoutes);
 app.use('/api/finance/invoices', invoiceRoutes);
 app.use('/api/finance', financeRoutes);
 app.use('/api/reports', reportRoutes);
+app.use('/api/documents', documentRoutes);
 app.use('/api/imports', importRoutes);
 app.use('/api/user-management/company-profile', companyProfileRoutes);
 app.use('/api/user-management/users', userRoutes);

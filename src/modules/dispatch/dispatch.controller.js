@@ -1,5 +1,6 @@
 import { dispatchService } from './dispatch.service.js';
 import { dispatchRepository } from './dispatch.repository.js';
+import { documentArchive } from '../../services/document-archive.service.js';
 
 const FILTERS = ['company_id', 'dispatch_type', 'status', 'buyer_id', 'order_confirmation_id', 'purchase_order_id', 'supplier_id', 'order', 'po', 'date_from', 'date_to', 'search', 'page', 'limit'];
 
@@ -62,6 +63,7 @@ export const dispatchController = {
   post: async (req, res, next) => {
     try {
       await dispatchService.post(req.params.id, req.user.id);
+      await documentArchive.capture('dispatch', Number(req.params.id), 'posted', req.user.id);
       await send(res, req.params.id, 200, (d) => `Dispatch ${d.dispatch_no} posted.`);
     } catch (error) {
       next(error);

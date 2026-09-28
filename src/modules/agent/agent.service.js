@@ -45,7 +45,7 @@ export const agentService = {
 
   /**
    * Builds the agents-table payload from validated input. Only the columns
-   * the locked schema actually has are read here — `comments` and every
+   * the locked schema actually has are read here — every
    * contact/tax/bank/commission-metadata field from the Laravel source are
    * deliberately never referenced, and `commission_rate` is never touched.
    */
@@ -55,7 +55,8 @@ export const agentService = {
     display_code: data.display_code,
     calculation_basis_id: data.calculation_basis_id,
     status: data.status,
-    remarks: data.remarks || null
+    remarks: data.remarks || null,
+    comments: data.comments || null
   }),
 
   create: async (data, userId) => {

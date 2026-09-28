@@ -9,7 +9,7 @@ const isId = (v) => isSet(v) && Number.isInteger(Number(v)) && Number(v) > 0;
 const INVOICE_SELECT = `
   SELECT i.*, cmp.code AS company_code, COALESCE(cmp.short_name, cmp.name) AS company_label,
          b.company_name AS buyer_name, oc.oc_num, oc.oc_date, oc.buyer_ref AS order_buyer_ref, pi.pi_no, pi.status AS proforma_status,
-         cur.iso_code AS currency_code, u1.name AS creator_name, u2.name AS issuer_name, u3.name AS canceller_name,
+         cur.iso_code AS currency_code, cur.name AS currency_name, u1.name AS creator_name, u2.name AS issuer_name, u3.name AS canceller_name,
          (SELECT COUNT(*) FROM invoice_items x WHERE x.invoice_id = i.id) AS lines_count,
          (SELECT SUM(x.amount) FROM invoice_items x WHERE x.invoice_id = i.id) AS total_amount,
          (SELECT COUNT(*) FROM invoice_items x WHERE x.invoice_id = i.id AND x.unit_price IS NULL) AS unpriced_lines_count,

@@ -101,6 +101,26 @@ const validateCommon = async (req, isUpdate = false) => {
     }
   }
 
+  // state_id / city_id — cascade from country_id: a state must be in the
+  // chosen country and a city in the chosen state (BuyerRequest). A child
+  // without its parent is dropped rather than rejected.
+  let stateId = isBlank(body.country_id) ? null : (isBlank(body.state_id) ? null : body.state_id);
+  let cityId = stateId === null || isBlank(body.city_id) ? null : body.city_id;
+  if (stateId !== null) {
+    if (!isInteger(stateId)) errors.push('State must be an integer');
+    else if (!(await buyerRepository.stateInCountry(Number(stateId), Number(body.country_id)))) errors.push('The selected state is not in the selected country.');
+  }
+  if (cityId !== null) {
+    if (!isInteger(cityId)) errors.push('City must be an integer');
+    else if (!(await buyerRepository.cityInState(Number(cityId), Number(stateId)))) errors.push('The selected city is not in the selected state.');
+  }
+
+  // contact_designation_id — the contact person's designation (active only)
+  if (!isBlank(body.contact_designation_id)) {
+    if (!isInteger(body.contact_designation_id)) errors.push('Designation must be an integer');
+    else if (!(await buyerRepository.designationExistsActive(Number(body.contact_designation_id)))) errors.push('Selected designation does not exist or is inactive');
+  }
+
   // pincode
   if (!isBlank(body.pincode)) {
     if (typeof body.pincode !== 'string' || body.pincode.length > 20) {
@@ -151,6 +171,28 @@ const validateCommon = async (req, isUpdate = false) => {
     } else {
       const exists = await buyerRepository.paymentTermExists(Number(body.payment_term_id));
       if (!exists) errors.push('Selected payment term does not exist');
+    }
+  }
+
+  // advance_percent / sight_percent — only for a payment term that splits the
+  // payment (payment_terms.has_split): both required, each 0.01–99.99, and
+  // together exactly 100. For any other term they are cleared.
+  let advancePercent = null;
+  let sightPercent = null;
+  const splitTerm = !isBlank(body.payment_term_id) && isInteger(body.payment_term_id)
+    && await buyerRepository.paymentTermHasSplit(Number(body.payment_term_id));
+  if (splitTerm) {
+    const pct = (v, label) => {
+      if (isBlank(v)) { errors.push(`${label} is required for this payment term`); return null; }
+      if (!isNumeric(v) || Number(v) < 0.01 || Number(v) > 99.99 || !/^\d+(\.\d{1,2})?$/.test(String(v).trim())) {
+        errors.push(`${label} must be between 0.01 and 99.99 (up to 2 decimals)`); return null;
+      }
+      return String(v).trim();
+    };
+    advancePercent = pct(body.advance_percent, 'Advance %');
+    sightPercent = pct(body.sight_percent, 'At sight %');
+    if (advancePercent !== null && sightPercent !== null && Math.round((Number(advancePercent) + Number(sightPercent)) * 100) !== 10000) {
+      errors.push('Advance % and at sight % must add up to 100.');
     }
   }
 
@@ -296,16 +338,19 @@ const validateCommon = async (req, isUpdate = false) => {
     }
   }
 
-  // comments — accepted for API compatibility, validated for shape only,
-  // but NEVER persisted (no buyers.comments column on the locked schema).
+  // comments — persisted (buyers.comments).
   if (!isBlank(body.comments)) {
     if (typeof body.comments !== 'string' || body.comments.length > 1000) {
       errors.push('Comments cannot exceed 1000 characters');
     }
   }
 
-  // Write the normalized GSTIN back for the controller/service to use.
+  // Write the normalized values back for the controller/service to use.
   req.body.gst_vat_no = gstVatNo;
+  req.body.state_id = stateId;
+  req.body.city_id = cityId;
+  req.body.advance_percent = advancePercent;
+  req.body.sight_percent = sightPercent;
 
   return errors;
 };
