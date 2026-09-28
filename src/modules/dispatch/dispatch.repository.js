@@ -47,13 +47,14 @@ const DISPATCHABLE_SELECT = `
   SELECT a.id AS allocation_id, a.order_confirmation_item_id, a.lot_id, a.quantity AS allocated_quantity,
          l.lot_no, l.product_id, l.uom_id, l.unit, p.name AS product_name, COALESCE(u.decimal_places, 0) AS uom_decimal_places,
          oci.design_no, oci.description AS item_description, oci.qty AS item_ordered_quantity,
-         pr.processing_no,
+         pr.processing_no, l.source_type AS lot_source_type, ie.inward_no,
          COALESCE((SELECT SUM(di.quantity) FROM dispatch_items di JOIN dispatches d ON d.id = di.dispatch_id
                    WHERE d.status = 'posted' AND di.order_confirmation_item_id = a.order_confirmation_item_id AND di.lot_id = a.lot_id), 0) AS dispatched_quantity,
          COALESCE((SELECT SUM(${SIGNED_QUANTITY}) FROM stock_movements sm WHERE sm.lot_id = a.lot_id AND sm.location_id = ?), 0) AS stock_at_location
   FROM order_item_production_allocations a
   JOIN lots l ON l.id = a.lot_id
-  JOIN processing_records pr ON pr.id = a.processing_record_id
+  LEFT JOIN processing_records pr ON pr.id = a.processing_record_id
+  LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
   JOIN order_confirmation_items oci ON oci.id = a.order_confirmation_item_id
   JOIN products p ON p.id = l.product_id
   LEFT JOIN uoms u ON u.id = l.uom_id
@@ -139,7 +140,7 @@ export const dispatchRepository = {
     return rows;
   },
 
-  /** Confirmed orders of a company with finished production allocated but not fully dispatched. */
+  /** Confirmed orders of a company with stock (production or bought-in) allocated but not fully dispatched. */
   findDispatchableOrders: async (companyId) => {
     const [rows] = await pool.query(`
       SELECT oc.id, oc.oc_num, oc.oc_date, b.company_name AS buyer_name

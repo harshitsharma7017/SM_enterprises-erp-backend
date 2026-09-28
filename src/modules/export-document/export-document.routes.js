@@ -1,8 +1,5 @@
 import express from 'express';
 import multer from 'multer';
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { exportDocumentController } from './export-document.controller.js';
 import { exportDocumentValidator } from './export-document.validator.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
@@ -10,25 +7,10 @@ import { requirePermission } from '../../middleware/rbac.middleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
 import { handleUploadErrors } from '../../middleware/upload.middleware.js';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
 const router = express.Router();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    const uploadPath = path.join(__dirname, '../../../public/storage/export-documents');
-    if (!fs.existsSync(uploadPath)) {
-      fs.mkdirSync(uploadPath, { recursive: true });
-    }
-    cb(null, uploadPath);
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname);
-    cb(null, 'checklist-' + uniqueSuffix + ext);
-  }
-});
+// Held in memory; the controller writes it through the storage service.
+const storage = multer.memoryStorage();
 
 const upload = multer({ 
   storage,

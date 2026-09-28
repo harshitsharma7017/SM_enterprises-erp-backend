@@ -13,7 +13,7 @@ const PAGE_HEIGHT = 841.89;
 const MARGIN = 40;
 const FONT_SIZE = 10;
 const LINE_HEIGHT = 14;
-const LINES_PER_PAGE = Math.floor((PAGE_HEIGHT - MARGIN * 2) / LINE_HEIGHT);
+const FONTS = ['Helvetica', 'Courier'];
 
 // Standard Helvetica only covers Latin-1 without embedding a Unicode font —
 // non-representable characters (e.g. a rupee/euro glyph) are replaced with
@@ -25,14 +25,18 @@ const escapePdfText = (str) => String(str)
   .replace(/\)/g, '\\)');
 
 /**
- * @param {{ lines: string[] }} params - Plain text lines, already laid out
- *   by the caller (one array entry per printed row).
+ * @param {{ lines: string[], font?: string, fontSize?: number, lineHeight?: number }} params -
+ *   Plain text lines, already laid out by the caller (one array entry per
+ *   printed row). `font` 'Courier' (monospaced) keeps space-padded columns
+ *   aligned; the default stays Helvetica at 10pt so existing documents are unchanged.
  * @returns {Buffer}
  */
-export function writeSimplePdf({ lines = [] }) {
+export function writeSimplePdf({ lines = [], font = 'Helvetica', fontSize = FONT_SIZE, lineHeight = LINE_HEIGHT }) {
+  const baseFont = FONTS.includes(font) ? font : 'Helvetica';
+  const linesPerPage = Math.floor((PAGE_HEIGHT - MARGIN * 2) / lineHeight);
   const pages = [];
-  for (let i = 0; i < lines.length; i += LINES_PER_PAGE) {
-    pages.push(lines.slice(i, i + LINES_PER_PAGE));
+  for (let i = 0; i < lines.length; i += linesPerPage) {
+    pages.push(lines.slice(i, i + linesPerPage));
   }
   if (pages.length === 0) pages.push([]);
 
@@ -46,9 +50,9 @@ export function writeSimplePdf({ lines = [] }) {
 
   const contentStreams = pages.map((pageLines) => {
     let y = PAGE_HEIGHT - MARGIN;
-    const parts = [`BT`, `/F1 ${FONT_SIZE} Tf`, `${MARGIN} ${y} Td`];
+    const parts = [`BT`, `/F1 ${fontSize} Tf`, `${MARGIN} ${y} Td`];
     pageLines.forEach((line, idx) => {
-      if (idx > 0) parts.push(`0 ${-LINE_HEIGHT} Td`);
+      if (idx > 0) parts.push(`0 ${-lineHeight} Td`);
       parts.push(`(${escapePdfText(line)}) Tj`);
     });
     parts.push('ET');
@@ -58,7 +62,7 @@ export function writeSimplePdf({ lines = [] }) {
   const objects = new Map();
   objects.set(catalogId, `<< /Type /Catalog /Pages ${pagesId} 0 R >>`);
   objects.set(pagesId, `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${pageIds.length} >>`);
-  objects.set(fontId, `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>`);
+  objects.set(fontId, `<< /Type /Font /Subtype /Type1 /BaseFont /${baseFont} >>`);
 
   pageIds.forEach((pageId, idx) => {
     objects.set(

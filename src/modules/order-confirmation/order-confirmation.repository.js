@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
+import { brandSpecRepository } from '../brand/brand-spec.repository.js';
 
 export const orderConfirmationRepository = {
   findAll: async (filters = {}) => {
@@ -123,7 +124,7 @@ export const orderConfirmationRepository = {
       item.colours = colours;
     }
     
-    oc.items = items;
+    oc.items = await brandSpecRepository.attach(items, () => oc.brand_id);
     return oc;
   },
 

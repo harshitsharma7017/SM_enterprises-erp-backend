@@ -3,6 +3,7 @@ import { purchaseOrderController } from './purchase-order.controller.js';
 import { purchaseOrderValidator } from './purchase-order.validator.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac.middleware.js';
+import { operationalDocuments, documentHandler } from '../../services/operational-documents.js';
 
 const router = express.Router();
 
@@ -37,6 +38,9 @@ router.post('/:id/cancel', requirePermission('purchase-order.approve'), purchase
 
 // GET /api/procurement/purchase-orders/:id
 router.get('/:id', requirePermission('purchase-order.view'), purchaseOrderController.show);
+
+// GET /api/procurement/purchase-orders/:id/document — PO as PDF
+router.get('/:id/document', requirePermission('purchase-order.view'), documentHandler(operationalDocuments.purchaseOrder, 'Purchase order'));
 
 // GET /api/procurement/purchase-orders/:id/edit
 router.get('/:id/edit', requirePermission('purchase-order.edit'), purchaseOrderController.edit);

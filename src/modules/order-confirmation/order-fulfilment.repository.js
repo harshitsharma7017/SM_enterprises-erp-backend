@@ -26,24 +26,43 @@ export const ACTIVE_ALLOCATED_BY_LOT = `
   GROUP BY lot_id
 `;
 
-/** Finished-material (production) lots with their produced, allocated and current stock quantities. */
+/** QC-accepted quantity put into stock per lot (GRN lots). */
+export const ACCEPTED_BY_LOT = `
+  SELECT lot_id, SUM(quantity) AS accepted
+  FROM stock_movements WHERE movement_type = 'QC_ACCEPTED_RECEIPT'
+  GROUP BY lot_id
+`;
+
+/**
+ * Lots that can be allocated to an order item: finished production lots, and
+ * bought-in GRN lots once QC has accepted quantity into stock (badges, elastic,
+ * drawcords bought ready-made), and opening-stock lots. The allocation basis is
+ * the produced quantity of a production lot, the opening quantity of an opening
+ * lot and the QC-accepted quantity of a GRN lot — never the raw received
+ * quantity, which includes rejected material.
+ */
+const ALLOCATION_BASIS = "CASE WHEN l.source_type IN ('production', 'opening') THEN l.quantity ELSE COALESCE(acc.accepted, 0) END";
 const FINISHED_LOT_SELECT = `
-  SELECT l.id AS lot_id, l.lot_no, l.company_id, l.product_id, l.uom_id, l.unit, l.received_date,
-         l.quantity AS produced_quantity, l.processing_record_id, pr.processing_no,
+  SELECT l.id AS lot_id, l.lot_no, l.company_id, l.product_id, l.uom_id, l.unit, l.received_date, l.source_type,
+         ${ALLOCATION_BASIS} AS produced_quantity, l.processing_record_id, pr.processing_no,
+         l.inward_entry_id, ie.inward_no,
          COALESCE(al.allocated, 0) AS allocated_quantity,
-         l.quantity - COALESCE(al.allocated, 0) AS allocatable_quantity,
+         ${ALLOCATION_BASIS} - COALESCE(al.allocated, 0) AS allocatable_quantity,
          COALESCE(st.stock_quantity, 0) AS stock_quantity,
          COALESCE(u.decimal_places, 0) AS uom_decimal_places
   FROM lots l
-  JOIN processing_records pr ON pr.id = l.processing_record_id
+  LEFT JOIN processing_records pr ON pr.id = l.processing_record_id
+  LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
   LEFT JOIN uoms u ON u.id = l.uom_id
+  LEFT JOIN (${ACCEPTED_BY_LOT}) acc ON acc.lot_id = l.id
   LEFT JOIN (${ACTIVE_ALLOCATED_BY_LOT}) al ON al.lot_id = l.id
   LEFT JOIN (${STOCK_BY_LOT}) st ON st.lot_id = l.id
-  WHERE l.source_type = 'production' AND l.status = 'received'
+  WHERE l.status = 'received' AND (l.source_type IN ('production', 'opening') OR (l.source_type = 'grn' AND acc.accepted > 0))
 `;
 
 const ALLOCATION_SELECT = `
-  SELECT a.*, l.lot_no, l.quantity AS lot_produced_quantity, pr.processing_no, pr.material_issue_id,
+  SELECT a.*, l.lot_no, l.source_type AS lot_source_type, l.quantity AS lot_produced_quantity, pr.processing_no, pr.material_issue_id,
+         l.inward_entry_id, ie.inward_no,
          mi.issue_no, oc.oc_num, oc.buyer_id, b.company_name AS buyer_name,
          oci.design_no, oci.description AS item_description, oci.qty AS item_ordered_quantity,
          p.name AS product_name, COALESCE(u.decimal_places, 0) AS uom_decimal_places,
@@ -51,8 +70,9 @@ const ALLOCATION_SELECT = `
          uc.name AS creator_name, ux.name AS canceller_name
   FROM order_item_production_allocations a
   JOIN lots l ON l.id = a.lot_id
-  JOIN processing_records pr ON pr.id = a.processing_record_id
-  JOIN material_issues mi ON mi.id = pr.material_issue_id
+  LEFT JOIN processing_records pr ON pr.id = a.processing_record_id
+  LEFT JOIN material_issues mi ON mi.id = pr.material_issue_id
+  LEFT JOIN inward_entries ie ON ie.id = l.inward_entry_id
   JOIN order_confirmations oc ON oc.id = a.order_confirmation_id
   JOIN order_confirmation_items oci ON oci.id = a.order_confirmation_item_id
   LEFT JOIN buyers b ON b.id = oc.buyer_id
@@ -174,6 +194,15 @@ export const orderFulfilmentRepository = {
   findItem: async (executor, ocId, itemId) => {
     const [rows] = await executor.query('SELECT * FROM order_confirmation_items WHERE id = ? AND order_confirmation_id = ?', [itemId, ocId]);
     return rows[0] || null;
+  },
+
+  /** QC-accepted quantity put into stock for a lot (the allocation basis of a GRN lot). */
+  acceptedOnLot: async (executor, lotId) => {
+    const [[row]] = await executor.query(
+      "SELECT COALESCE(SUM(quantity), 0) AS accepted FROM stock_movements WHERE lot_id = ? AND movement_type = 'QC_ACCEPTED_RECEIPT'",
+      [lotId]
+    );
+    return row.accepted;
   },
 
   allocatedOnLot: async (executor, lotId) => {

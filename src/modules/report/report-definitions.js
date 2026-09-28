@@ -154,7 +154,7 @@ export const REPORTS = [
     search: ['sb.lot_no', 'sb.product_name', 'sb.supplier_name', 'sb.inward_no', 'sb.lot_processing_no', 'sb.location_code'],
     filters: [
       enumFilter('stock_status', 'Stock', 'sb.stock_status', ['available', 'nil']),
-      enumFilter('source_type', 'Source', 'sb.lot_source_type', ['grn', 'production']),
+      enumFilter('source_type', 'Source', 'sb.lot_source_type', ['grn', 'production', 'opening']),
       location('sb.location_id'),
       supplier('sb.supplier_id'),
       product('sb.product_id'),

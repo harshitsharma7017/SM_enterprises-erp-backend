@@ -34,13 +34,13 @@ const text = (v) => (blank(v) ? null : String(v).trim());
 const sameId = (a, b) => (a === null || a === undefined ? null : Number(a)) === (b === null || b === undefined ? null : Number(b));
 
 /**
- * The lot must be a received lot — of a posted GRN, or a production output
- * lot — whose product belongs to the lot's company.
+ * The lot must be a received lot — of a posted GRN, a production output lot
+ * or an opening-stock lot — whose product belongs to the lot's company.
  */
 export const checkLot = (lot) => {
   if (!lot) throw rejected('Lot not found.');
   if (lot.status !== 'received') throw rejected(`Lot ${lot.lot_no} is ${lot.status}.`);
-  if (lot.source_type !== 'production' && (lot.entry_type !== 'grn' || lot.grn_deleted_at || lot.receipt_status !== 'posted')) {
+  if (lot.source_type === 'grn' && (lot.entry_type !== 'grn' || lot.grn_deleted_at || lot.receipt_status !== 'posted')) {
     throw rejected(`The goods receipt of lot ${lot.lot_no} is not posted.`);
   }
   if (lot.product_company_id !== lot.company_id) {

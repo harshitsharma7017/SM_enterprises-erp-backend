@@ -1,5 +1,6 @@
 import { exportDocumentService } from './export-document.service.js';
 import { exportDocumentRepository } from './export-document.repository.js';
+import { storage } from '../../services/storage.service.js';
 
 export const exportDocumentController = {
   index: async (req, res, next) => {
@@ -83,16 +84,19 @@ export const exportDocumentController = {
       if (!req.file) {
         return res.status(400).json({ success: false, message: 'No file uploaded' });
       }
-      // Store a relative path servable via the /storage static mount (see
-      // app.js: app.use('/storage', express.static(.../public/storage))),
-      // matching the pattern order-format.service.js already uses for its
-      // own uploads — req.file.path is an absolute filesystem path and was
-      // previously stored as-is, making every checklist file unlinkable.
-      const relativePath = `export-documents/${req.file.filename}`;
-      await exportDocumentService.updateChecklist(req.params.id, req.params.checklist_id, {
-        path: relativePath,
-        originalname: req.file.originalname
-      });
+      // The stored path is the storage key, served at /storage/<key> (local
+      // disk or a signed redirect to the bucket — see storage.service.js).
+      const relativePath = storage.newKey('export-documents', 'checklist', req.file.originalname);
+      await storage.put(relativePath, req.file.buffer, req.file.mimetype);
+      try {
+        await exportDocumentService.updateChecklist(req.params.id, req.params.checklist_id, {
+          path: relativePath,
+          originalname: req.file.originalname
+        });
+      } catch (error) {
+        await storage.remove(relativePath);
+        throw error;
+      }
       res.json({
         success: true,
         message: 'Checklist file uploaded successfully',

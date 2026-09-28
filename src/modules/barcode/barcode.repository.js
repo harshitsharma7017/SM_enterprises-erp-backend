@@ -61,7 +61,7 @@ export const barcodeRepository = {
       query += ' AND b.status = ?';
       params.push(filters.status);
     }
-    if (['grn', 'production'].includes(filters.source_type)) {
+    if (['grn', 'production', 'opening'].includes(filters.source_type)) {
       query += ' AND l.source_type = ?';
       params.push(filters.source_type);
     }

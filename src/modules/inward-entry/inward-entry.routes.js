@@ -4,6 +4,7 @@ import { inwardEntryValidator } from './inward-entry.validator.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac.middleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
+import { operationalDocuments, documentHandler } from '../../services/operational-documents.js';
 
 // Goods receipts (GRN). One receiving system for every PO origin; the path
 // keeps its original name so existing links and permissions stay valid.
@@ -26,6 +27,9 @@ router.get('/po-details/:id', requirePermission('inward-entry.view'), inwardEntr
 
 // GET /api/procurement/inward-entries/:id
 router.get('/:id', requirePermission('inward-entry.view'), inwardEntryController.show);
+
+// GET /api/procurement/inward-entries/:id/document — GRN as PDF
+router.get('/:id/document', requirePermission('inward-entry.view'), documentHandler(operationalDocuments.grn, 'Goods receipt'));
 
 // POST /api/procurement/inward-entries — draft GRN
 router.post('/', requirePermission('inward-entry.create'), validate(inwardEntryValidator.create), inwardEntryController.create);

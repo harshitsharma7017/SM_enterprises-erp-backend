@@ -4,6 +4,7 @@ import { debitNoteValidator } from './debit-note.validator.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/rbac.middleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
+import { operationalDocuments, documentHandler } from '../../services/operational-documents.js';
 
 // Debit notes against the supplier for QC-rejected (and returned) material.
 // Existing debit-note.* permissions; posting and cancelling (finalising) use
@@ -20,6 +21,9 @@ router.get('/form-data', requirePermission('debit-note.create'), debitNoteContro
 
 // GET /api/finance/debit-notes/:id
 router.get('/:id', requirePermission('debit-note.view'), debitNoteController.show);
+
+// GET /api/finance/debit-notes/:id/document — debit note as PDF
+router.get('/:id/document', requirePermission('debit-note.view'), documentHandler(operationalDocuments.debitNote, 'Debit note'));
 
 // POST /api/finance/debit-notes — draft from a completed inspection / posted return
 router.post('/', requirePermission('debit-note.create'), validate(debitNoteValidator.create), debitNoteController.create);

@@ -107,7 +107,7 @@ export const orderFulfilmentService = {
     const allocations = await orderFulfilmentRepository.findAllocations('a.order_confirmation_id = ?', [ocId]);
     const dispatchLines = await orderFulfilmentRepository.findDispatchLines(ocId);
     const traces = {};
-    for (const id of [...new Set(allocations.map((a) => a.processing_record_id))]) {
+    for (const id of [...new Set(allocations.map((a) => a.processing_record_id).filter(Boolean))]) {
       traces[id] = await findProductionSource(id);
     }
 
@@ -130,7 +130,7 @@ export const orderFulfilmentService = {
       status: oc.status,
       order_status: orderStatusOf(oc.status, items),
       items,
-      allocations: allocations.map((a) => ({ ...a, production: traces[a.processing_record_id] })),
+      allocations: allocations.map((a) => ({ ...a, production: a.processing_record_id ? traces[a.processing_record_id] : null })),
       dispatches: dispatchLines,
       finished_stock: finished,
     };
@@ -148,23 +148,24 @@ export const orderFulfilmentService = {
   },
 
   /**
-   * Allocates finished production output (a Phase 9 lot) to an item of a
-   * CONFIRMED order. Explicit and manual — no allocation rule is defined.
+   * Allocates finished production output (a Phase 9 lot) — or a bought-in GRN
+   * lot's QC-accepted quantity — to an item of a CONFIRMED order. Explicit and manual — no allocation rule is defined.
    * Lock order: order, then lot; every read after both locks. A lot's active
-   * allocations never exceed its produced quantity (across all orders).
+   * allocations never exceed its produced (production lot) or QC-accepted
+   * (GRN lot) quantity, across all orders.
    */
   allocate: async (ocId, data, userId) => inTransaction(async (connection) => {
     const oc = await orderFulfilmentRepository.lockOrder(connection, ocId);
     if (!oc) throw notFound();
     const lot = await orderFulfilmentRepository.lockLot(connection, data.lot_id);
-    if (oc.status !== 'confirmed') throw rejected(`Production can only be allocated to a confirmed order (${oc.oc_num} is ${oc.status}).`);
+    if (oc.status !== 'confirmed') throw rejected(`Stock can only be allocated to a confirmed order (${oc.oc_num} is ${oc.status}).`);
     if (oc.company_id === null) throw rejected(`${oc.oc_num} has no company yet.`);
     const item = await orderFulfilmentRepository.findItem(connection, oc.id, data.order_confirmation_item_id);
     if (!item) throw rejected('The item does not belong to this order.');
-    if (!item.product_id) throw rejected('The order item has no product, so production cannot be allocated to it.');
+    if (!item.product_id) throw rejected('The order item has no product, so stock cannot be allocated to it.');
 
     if (!lot) throw rejected('Lot not found.');
-    if (lot.source_type !== 'production') throw rejected(`Lot ${lot.lot_no} is not finished production output.`);
+    if (!['production', 'grn', 'opening'].includes(lot.source_type)) throw rejected(`Lot ${lot.lot_no} cannot be allocated.`);
     if (lot.status !== 'received') throw rejected(`Lot ${lot.lot_no} is ${lot.status}.`);
     if (lot.company_id !== oc.company_id) throw rejected(`Lot ${lot.lot_no} belongs to a different company than ${oc.oc_num}.`);
     if (lot.product_id !== item.product_id) throw rejected(`Lot ${lot.lot_no} is a different product than the order item.`);
@@ -178,7 +179,10 @@ export const orderFulfilmentService = {
     if (await orderFulfilmentRepository.findActiveAllocation(connection, item.id, lot.id)) {
       throw rejected(`Lot ${lot.lot_no} is already allocated to this item; cancel that allocation to change it.`);
     }
-    const allocatable = micro(lot.quantity) - micro(await orderFulfilmentRepository.allocatedOnLot(connection, lot.id));
+    // Production lot: what it produced. Opening lot: its opening quantity. GRN lot: what QC accepted into stock.
+    const basis = lot.source_type === 'grn' ? await orderFulfilmentRepository.acceptedOnLot(connection, lot.id) : lot.quantity;
+    if (micro(basis) <= 0) throw rejected(`Lot ${lot.lot_no} has no QC-accepted quantity in stock yet.`);
+    const allocatable = micro(basis) - micro(await orderFulfilmentRepository.allocatedOnLot(connection, lot.id));
     if (micro(data.quantity) > allocatable) {
       throw rejected(`Allocating ${String(data.quantity).trim()} exceeds the ${fromMicro(Math.max(allocatable, 0))}${lot.unit ? ` ${lot.unit}` : ''} of lot ${lot.lot_no} not yet allocated.`);
     }
@@ -187,7 +191,7 @@ export const orderFulfilmentService = {
       company_id: oc.company_id,
       order_confirmation_id: oc.id,
       order_confirmation_item_id: item.id,
-      processing_record_id: lot.processing_record_id,
+      processing_record_id: lot.processing_record_id || null,
       lot_id: lot.id,
       product_id: lot.product_id,
       uom_id: lot.uom_id,

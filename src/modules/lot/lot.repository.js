@@ -116,7 +116,7 @@ export const lotRepository = {
       const term = `%${search}%`;
       params.push(term, term, term, term, term, term);
     }
-    if (source_type === 'grn' || source_type === 'production') {
+    if (['grn', 'production', 'opening'].includes(source_type)) {
       query += ' AND l.source_type = ?';
       params.push(source_type);
     }
@@ -171,7 +171,7 @@ export const lotRepository = {
     `, [id]);
     lot.material_issues = issues;
     lot.production = lot.processing_record_id ? await findProductionSource(lot.processing_record_id) : null;
-    lot.order_allocations = lot.source_type === 'production' ? await findOrderAllocations('lot_id', lot.id) : [];
+    lot.order_allocations = await findOrderAllocations('lot_id', lot.id);
     const [dispatches] = await pool.query(`
       SELECT di.id, di.quantity, di.unit, d.id AS dispatch_id, d.dispatch_no, d.dispatch_date, d.status,
              d.order_confirmation_id, oc.oc_num, b.company_name AS buyer_name, d.destination_name

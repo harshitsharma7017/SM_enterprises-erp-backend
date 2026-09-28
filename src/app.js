@@ -52,6 +52,7 @@ import companyProfileRoutes from './modules/company-profile/company-profile.rout
 import userRoutes from './modules/user-management/user.routes.js';
 import roleRoutes from './modules/user-management/role.routes.js';
 import companyRoutes from './modules/company/company.routes.js';
+import { storage, isPublicKey, LOCAL_ROOT as storageRoot } from './services/storage.service.js';
 
 const app = express();
 
@@ -67,10 +68,21 @@ app.use(morgan('dev'));
 // /storage are meant to be loaded cross-origin by design, so that one
 // header is relaxed here; the JSON API's helmet() protection elsewhere is
 // untouched.
+// With STORAGE_DRIVER=s3 the files live in a private bucket (R2 / S3) and
+// the same /storage/<key> link redirects to a short-lived signed URL, so the
+// stored paths and every frontend link stay unchanged.
 app.use('/storage', (req, res, next) => {
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
   next();
-}, express.static(path.join(__dirname, '../public/storage')));
+}, storage.driverName() === 's3'
+  ? (req, res) => {
+      const key = decodeURIComponent(req.path.replace(/^\//, ''));
+      if (req.method !== 'GET' && req.method !== 'HEAD') return res.status(405).end();
+      if (!isPublicKey(key)) return res.status(404).end();
+      res.setHeader('Cache-Control', 'private, max-age=60');
+      res.redirect(302, storage.signedUrl(key));
+    }
+  : express.static(storageRoot));
 
 // Routes
 app.use('/api', healthRoutes);

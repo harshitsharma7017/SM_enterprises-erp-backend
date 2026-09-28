@@ -4,6 +4,7 @@ import { supplierReturnValidator } from './supplier-return.validator.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/rbac.middleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
+import { operationalDocuments, documentHandler } from '../../services/operational-documents.js';
 
 // Returns of QC-rejected material to the supplier (an ERP record only — no logistics).
 const router = express.Router();
@@ -18,6 +19,9 @@ router.get('/form-data', requirePermission('supplier-return.create'), supplierRe
 
 // GET /api/procurement/supplier-returns/:id
 router.get('/:id', requirePermission('supplier-return.view'), supplierReturnController.show);
+
+// GET /api/procurement/supplier-returns/:id/document — return challan as PDF
+router.get('/:id/document', requirePermission('supplier-return.view'), documentHandler(operationalDocuments.supplierReturn, 'Supplier return'));
 
 // POST /api/procurement/supplier-returns — draft return from a completed inspection
 router.post('/', requirePermission('supplier-return.create'), validate(supplierReturnValidator.create), supplierReturnController.create);

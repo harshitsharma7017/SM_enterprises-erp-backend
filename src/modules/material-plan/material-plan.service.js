@@ -86,7 +86,14 @@ const checkLines = async (connection, companyId, lines, planId = null) => {
 export const materialPlanService = {
   findAll: (filters) => materialPlanRepository.findAll(filters),
 
-  findById: (id) => materialPlanRepository.findById(id),
+  /** The plan with each line's material availability (stock + open POs of its product). */
+  findById: async (id) => {
+    const plan = await materialPlanRepository.findById(id);
+    if (!plan) return plan;
+    const availability = await materialPlanRepository.availability(plan.company_id, (plan.items || []).map((i) => i.product_id));
+    plan.items = (plan.items || []).map((item) => ({ ...item, ...(availability[item.product_id] || { stock_quantity: '0', open_po_quantity: '0' }) }));
+    return plan;
+  },
 
   create: async (data, items, userId) => {
     const id = await inTransaction(async (connection) => {

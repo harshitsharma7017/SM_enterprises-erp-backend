@@ -2,6 +2,8 @@ import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
 import { materialRequirementRepository } from '../material-requirement/material-requirement.repository.js';
 import { PLAN_ITEM_ORDER_AGGREGATE } from '../purchase-order/garment-po.repository.js';
+import { PO_LINE_SELECT } from '../inward-entry/inward-entry.repository.js';
+import { SIGNED_QUANTITY } from '../inventory/stock-ledger.js';
 
 const isSet = (v) => v !== undefined && v !== null && v !== '';
 
@@ -54,6 +56,36 @@ const attachItems = async (plans, executor = pool) => {
 };
 
 export const materialPlanRepository = {
+  /**
+   * Material availability of products in one company, straight from records:
+   *   stock_quantity    = the stock ledger across all locations (every lot)
+   *   open_po_quantity  = still to arrive on raised / partial POs
+   *                       (ordered − received − direct-dispatched)
+   * Nothing is reserved or netted against other plans.
+   */
+  availability: async (companyId, productIds) => {
+    const ids = [...new Set(productIds.filter(Boolean))];
+    if (!companyId || ids.length === 0) return {};
+    const [stock] = await pool.query(
+      `SELECT sm.product_id, SUM(${SIGNED_QUANTITY}) AS stock_quantity
+       FROM stock_movements sm WHERE sm.company_id = ? AND sm.product_id IN (?)
+       GROUP BY sm.product_id`,
+      [companyId, ids]
+    );
+    const [open] = await pool.query(
+      `SELECT x.product_id, SUM(GREATEST(x.pending_quantity, 0)) AS open_po_quantity
+       FROM (${PO_LINE_SELECT}
+             JOIN purchase_orders po ON po.id = poi.purchase_order_id
+             WHERE po.company_id = ? AND po.status IN ('raised', 'partial') AND po.deleted_at IS NULL AND poi.product_id IN (?)) x
+       GROUP BY x.product_id`,
+      [companyId, ids]
+    );
+    const result = Object.fromEntries(ids.map((id) => [id, { stock_quantity: '0', open_po_quantity: '0' }]));
+    stock.forEach((r) => { result[r.product_id].stock_quantity = String(r.stock_quantity); });
+    open.forEach((r) => { result[r.product_id].open_po_quantity = String(r.open_po_quantity); });
+    return result;
+  },
+
   findAll: async ({ search, status, company_id, period_from, period_to, page = 1, limit = 15 }) => {
     let query = `
       SELECT mp.id, mp.company_id, mp.plan_no, mp.financial_year, mp.title, mp.period_start, mp.period_end,

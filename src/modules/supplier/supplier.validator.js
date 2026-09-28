@@ -441,6 +441,9 @@ const validateCommon = async (req, isUpdate = false) => {
   return errors;
 };
 
+/** The create rules for a body outside a request (Excel import); normalises `body` in place like the route does. */
+export const validateSupplierCreate = (body) => validateCommon({ body, params: {} }, false);
+
 export const supplierValidator = {
   validateStore: async (req, res, next) => {
     try {

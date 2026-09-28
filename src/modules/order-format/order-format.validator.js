@@ -1,4 +1,3 @@
-import fs from 'fs';
 import { orderFormatRepository } from './order-format.repository.js';
 
 // Reads a file's magic bytes to confirm it is actually a JPEG, PNG or WEBP,
@@ -6,15 +5,9 @@ import { orderFormatRepository } from './order-format.repository.js';
 // multer's fileFilter checks but which is trivially spoofable). Mirrors
 // Laravel's `mimes:jpg,jpeg,png,webp` rule, which sniffs file content rather
 // than the request metadata alone.
-const detectImageMimeType = (filePath) => {
-  const buffer = Buffer.alloc(12);
-  let bytesRead = 0;
-  const fd = fs.openSync(filePath, 'r');
-  try {
-    bytesRead = fs.readSync(fd, buffer, 0, 12, 0);
-  } finally {
-    fs.closeSync(fd);
-  }
+const detectImageMimeType = (content) => {
+  const buffer = Buffer.isBuffer(content) ? content.subarray(0, 12) : Buffer.alloc(0);
+  const bytesRead = buffer.length;
 
   if (bytesRead >= 3 && buffer[0] === 0xFF && buffer[1] === 0xD8 && buffer[2] === 0xFF) {
     return 'image/jpeg';
@@ -136,13 +129,12 @@ const validateCommon = async (req, res, isUpdate = false) => {
 
   // Content-based type check on each newly uploaded file — rejects anything
   // whose actual bytes aren't a JPEG/PNG/WEBP, regardless of what Content-Type
-  // the client claimed. Invalid files are removed immediately since they were
-  // already written to disk by multer before this validator ran.
+  // the client claimed. Uploads are still in memory here, so nothing needs
+  // removing.
   if (req.files && req.files.length > 0) {
     for (const file of req.files) {
-      if (!detectImageMimeType(file.path)) {
+      if (!detectImageMimeType(file.buffer)) {
         errors.push(`File "${file.originalname}" is not a valid JPG, PNG or WEBP image.`);
-        if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
       }
     }
   }

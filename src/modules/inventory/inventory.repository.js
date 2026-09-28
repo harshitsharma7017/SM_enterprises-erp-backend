@@ -2,6 +2,8 @@ import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
 import { SIGNED_QUANTITY } from './stock-ledger.js';
 
+export const LOT_SOURCES = ['grn', 'production', 'opening'];
+
 const isSet = (v) => v !== undefined && v !== null && v !== '';
 // An id filter only applies to a positive integer; anything else is ignored rather than reaching SQL as NaN.
 const isId = (v) => isSet(v) && Number.isInteger(Number(v)) && Number(v) > 0;
@@ -141,9 +143,12 @@ export const inventoryRepository = {
       query += ' AND l.lot_no LIKE ?';
       params.push(`%${filters.lot}%`);
     }
-    if (['grn', 'production'].includes(filters.lot_source)) {
-      query += ' AND l.source_type = ?';
-      params.push(filters.lot_source);
+    // One source, or several (an array / comma list, e.g. the issuable 'grn,opening').
+    const sources = (Array.isArray(filters.lot_source) ? filters.lot_source : String(filters.lot_source || '').split(','))
+      .map((v) => String(v).trim()).filter((v) => LOT_SOURCES.includes(v));
+    if (sources.length) {
+      query += ' AND l.source_type IN (?)';
+      params.push(sources);
     }
     if (isSet(filters.date_from)) {
       query += ' AND l.received_date >= ?';

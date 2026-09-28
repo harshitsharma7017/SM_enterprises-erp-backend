@@ -115,11 +115,11 @@ export const supplierService = {
    * source parity. The Supplier screen passes no default (party_type must
    * be supplied), matching SupplierController::store() exactly.
    */
-  create: async (data, userId, { defaultPartyType = null } = {}) => {
-    let connection;
+  create: async (data, userId, { defaultPartyType = null, connection: external = null } = {}) => {
+    // `external`: a caller-owned transaction (Excel import) — then only the new id is returned.
+    const connection = external || await pool.getConnection();
     try {
-      connection = await pool.getConnection();
-      await connection.beginTransaction();
+      if (!external) await connection.beginTransaction();
 
       const payload = {
         ...supplierService.buildPayload(data),
@@ -137,14 +137,15 @@ export const supplierService = {
       await supplierRepository.syncBuyers(connection, supplierId, data.buyer_ids || []);
       await supplierService.syncContacts(connection, supplierId, data);
 
+      if (external) return supplierId;
       await connection.commit();
 
       return await supplierService.findById(supplierId, { includeJobwork: true });
     } catch (error) {
-      if (connection) await connection.rollback();
+      if (!external) await connection.rollback();
       throw error;
     } finally {
-      if (connection) connection.release();
+      if (!external) connection.release();
     }
   },
 

@@ -1,11 +1,6 @@
-import path from 'path';
-import fs from 'fs';
-import { fileURLToPath } from 'url';
 import { companyProfileRepository } from './company-profile.repository.js';
+import { storage } from '../../services/storage.service.js';
 import Joi from 'joi';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // 'logo' is never accepted as a body field — it only ever comes from the
 // uploaded file (see update() below), matching the original's
@@ -48,16 +43,23 @@ export const companyProfileController = {
 
       // Original ERP: CompanyProfileController::update() — a new logo
       // replaces and deletes the old file; no file means "leave it alone".
+      // The file is written only now, after validation passed; the old logo
+      // is removed only once the new path is saved.
+      let oldLogo = null;
       if (req.file) {
         const existing = await companyProfileRepository.get();
-        if (existing?.logo_path) {
-          const oldPath = path.join(__dirname, '../../../public/storage', existing.logo_path);
-          fs.unlink(oldPath, () => {});
-        }
-        value.logo_path = `company-profile/${req.file.filename}`;
+        oldLogo = existing?.logo_path || null;
+        value.logo_path = storage.newKey('company-profile', 'logo', req.file.originalname);
+        await storage.put(value.logo_path, req.file.buffer, req.file.mimetype);
       }
 
-      await companyProfileRepository.update(value);
+      try {
+        await companyProfileRepository.update(value);
+      } catch (error) {
+        if (req.file) await storage.remove(value.logo_path);
+        throw error;
+      }
+      if (oldLogo && oldLogo !== value.logo_path) await storage.remove(oldLogo);
       const data = await companyProfileRepository.get();
       res.json({ message: 'Company Profile updated successfully', data });
     } catch (error) {

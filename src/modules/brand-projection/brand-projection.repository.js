@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
+import { brandSpecRepository } from '../brand/brand-spec.repository.js';
 
 const isSet = (v) => v !== undefined && v !== null && v !== '';
 
@@ -98,7 +99,7 @@ export const brandProjectionRepository = {
       ORDER BY bpi.sort_order ASC, bpi.id ASC
     `, [id]);
 
-    projection.items = items;
+    projection.items = await brandSpecRepository.attach(items, () => projection.brand_id);
     return projection;
   },
 

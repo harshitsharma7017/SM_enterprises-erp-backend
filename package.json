@@ -8,7 +8,9 @@
     "dev": "nodemon src/server.js",
     "test": "echo \"Error: no test specified\" && exit 1",
     "generate:module": "node scripts/generate-module.js",
-    "seed:rbac": "node scripts/seed-rbac.js"
+    "seed:rbac": "node scripts/seed-rbac.js",
+    "seed:number-series": "node scripts/seed-number-series.js",
+    "backup:db": "node scripts/backup-db.js"
   },
   "keywords": [],
   "author": "",

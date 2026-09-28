@@ -4,6 +4,7 @@ import { productionValidator } from './production.validator.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission, requireAnyPermission } from '../../middleware/rbac.middleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
+import { operationalDocuments, documentHandler } from '../../services/operational-documents.js';
 
 // Store → Supervisor/Cutting → Foreman: material issues (stock OUT through the
 // Phase 7 ledger) and the processing record of each issue.
@@ -15,6 +16,7 @@ router.use(authenticate);
 router.get('/material-issues', requirePermission('material-issue.view'), productionController.issues);
 router.get('/material-issues/form-data', requireAnyPermission(['material-issue.create', 'material-issue.edit']), productionController.issueFormData);
 router.get('/material-issues/:id', requirePermission('material-issue.view'), productionController.issue);
+router.get('/material-issues/:id/document', requirePermission('material-issue.view'), documentHandler(operationalDocuments.materialIssue, 'Material issue'));
 router.post('/material-issues', requirePermission('material-issue.create'), validate(productionValidator.issueCreate), productionController.createIssue);
 router.put('/material-issues/:id', requirePermission('material-issue.edit'), validate(productionValidator.issueUpdate), productionController.updateIssue);
 router.post('/material-issues/:id/post', requirePermission('material-issue.post'), productionController.postIssue);
@@ -24,6 +26,7 @@ router.post('/material-issues/:id/cancel', requirePermission('material-issue.can
 router.get('/processing', requirePermission('processing.view'), productionController.records);
 router.get('/processing/form-data', requireAnyPermission(['processing.create', 'processing.edit']), productionController.recordFormData);
 router.get('/processing/:id', requirePermission('processing.view'), productionController.record);
+router.get('/processing/:id/document', requirePermission('processing.view'), documentHandler(operationalDocuments.processing, 'Processing record'));
 router.post('/processing', requirePermission('processing.create'), validate(productionValidator.processingCreate), productionController.createRecord);
 router.put('/processing/:id', requirePermission('processing.edit'), validate(productionValidator.processingUpdate), productionController.updateRecord);
 router.post('/processing/:id/complete', requirePermission('processing.complete'), validate(productionValidator.processingComplete), productionController.completeRecord);

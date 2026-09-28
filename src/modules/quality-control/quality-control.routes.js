@@ -4,6 +4,7 @@ import { qualityControlValidator } from './quality-control.validator.js';
 import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/rbac.middleware.js';
 import { validate } from '../../middleware/validation.middleware.js';
+import { operationalDocuments, documentHandler } from '../../services/operational-documents.js';
 
 // QC of received lots. Reuses the goods-receipt permissions: viewing needs
 // inward-entry.view; recording, completing and cancelling an inspection need
@@ -20,6 +21,9 @@ router.get('/form-data', requirePermission('inward-entry.approve'), qualityContr
 
 // GET /api/quality-control/:id
 router.get('/:id', requirePermission('inward-entry.view'), qualityControlController.show);
+
+// GET /api/quality-control/:id/document — QC report as PDF
+router.get('/:id/document', requirePermission('inward-entry.view'), documentHandler(operationalDocuments.qualityInspection, 'Inspection'));
 
 // POST /api/quality-control — draft inspection
 router.post('/', requirePermission('inward-entry.approve'), validate(qualityControlValidator.create), qualityControlController.create);

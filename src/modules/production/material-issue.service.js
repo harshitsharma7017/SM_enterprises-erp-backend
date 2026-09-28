@@ -84,9 +84,9 @@ const checkLines = async (executor, companyId, locationId, lines, lots) => {
       continue;
     }
     seen.add(lot.id);
-    // Unchanged Phase 8 scope: issues take received raw material (GRN lots), not finished output.
-    if (lot.source_type !== 'grn') {
-      errors.push(`${label}: lot ${lot.lot_no} is finished material; only received (GRN) lots can be issued`);
+    // Issues take received raw material — GRN lots or opening stock — not finished production output.
+    if (!['grn', 'opening'].includes(lot.source_type)) {
+      errors.push(`${label}: lot ${lot.lot_no} is finished material; only received (GRN) or opening-stock lots can be issued`);
       continue;
     }
     try {
@@ -136,7 +136,7 @@ export const materialIssueService = {
   /** Locations and people for a company, or the usable stock at one location. */
   formData: async ({ company_id: companyId, location_id: locationId }) => {
     if (!blank(locationId)) {
-      const stock = await inventoryRepository.findBalances({ location_id: locationId, lot_source: 'grn', limit: 500 });
+      const stock = await inventoryRepository.findBalances({ location_id: locationId, lot_source: ['grn', 'opening'], limit: 500 });
       return { stock: stock.rows };
     }
     const locations = await inventoryRepository.findLocations({ company_id: companyId, status: 'active', limit: 500 });

@@ -72,7 +72,8 @@ const checkLocation = async (executor, locationId, companyId) => {
 };
 
 /**
- * Stock lines: finished production lots allocated to the order's items. Each
+ * Stock lines: lots allocated to the order's items — finished production lots
+ * or QC-accepted bought-in (GRN) lots. Each
  * line needs the (item, lot) allocation and may dispatch only what is left of
  * it (allocated − already posted), and together never more than the lot holds
  * at the location. Product/UOM come from the lot. `lots` maps id → lot row
@@ -106,8 +107,8 @@ const checkStockLines = async (executor, oc, location, lines, lots, excludeDispa
       continue;
     }
     seen.add(key);
-    if (lot.source_type !== 'production') {
-      errors.push(`${label}: lot ${lot.lot_no} is not finished production output`);
+    if (!['production', 'grn', 'opening'].includes(lot.source_type)) {
+      errors.push(`${label}: lot ${lot.lot_no} cannot be dispatched from stock`);
       continue;
     }
     try {

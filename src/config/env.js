@@ -19,5 +19,16 @@ export const config = {
   // UserService/UpdateUserRequest protect from deletion, deactivation and
   // having its Super Admin role stripped. Not "whoever holds the Super Admin
   // role" — one specific configured account.
-  superAdminEmail: process.env.SUPER_ADMIN_EMAIL || 'test@test.com'
+  superAdminEmail: process.env.SUPER_ADMIN_EMAIL || 'test@test.com',
+  // Uploaded files: 'local' (public/storage on this server) or 's3' (any
+  // S3-compatible bucket — Cloudflare R2 or Amazon S3). See storage.service.js.
+  storage: {
+    driver: (process.env.STORAGE_DRIVER || 'local').toLowerCase(),
+    endpoint: process.env.S3_ENDPOINT || '',
+    region: process.env.S3_REGION || 'auto',
+    bucket: process.env.S3_BUCKET || '',
+    accessKeyId: process.env.S3_ACCESS_KEY_ID || '',
+    secretAccessKey: process.env.S3_SECRET_ACCESS_KEY || '',
+    urlExpiresSeconds: parseInt(process.env.S3_URL_EXPIRES_SECONDS || '300', 10)
+  }
 };

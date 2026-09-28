@@ -1,18 +1,6 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { pool } from '../../config/database.js';
 import { orderFormatRepository } from './order-format.repository.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// This file lives 3 levels under the project root (src/modules/order-format),
-// so reaching public/storage/order-formats needs 3 levels of "..", not 2 —
-// matching where upload.middleware.js (2 levels under root) actually writes
-// files. Getting this wrong means post-commit cleanup silently no-ops:
-// fs.existsSync() on the miscomputed path is always false.
-const STORAGE_DIR = path.join(__dirname, '../../../public/storage/order-formats');
+import { storage } from '../../services/storage.service.js';
 
 const STANDARD_COLUMNS = {
   'supplier':    { label: 'Supplier',          print_only: false },
@@ -27,19 +15,29 @@ const STANDARD_COLUMNS = {
 
 const DEFAULT_UNITS = ['PCS', 'SET', 'MTR', 'KGS', 'PAIR', 'DOZ'];
 
-// Removes already-committed-obsolete physical files. Must only be called
-// after the owning DB transaction has successfully committed, since a
-// filesystem failure here cannot roll back a committed transaction.
-const cleanupFiles = (filePaths) => {
-  for (const filePath of filePaths) {
-    try {
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-      }
-    } catch (err) {
-      console.error(`[order-format] Failed to remove physical file after commit: ${filePath}`, err);
+// Removes already-committed-obsolete files (storage keys). Must only be
+// called after the owning DB transaction has successfully committed, since a
+// storage failure here cannot roll back a committed transaction; failures are
+// logged by the storage service, never thrown.
+const cleanupFiles = async (keys) => {
+  for (const key of keys) await storage.remove(key);
+};
+
+// Writes the request's new images to storage before the transaction starts;
+// each file gets its storage key. Returns the keys, for cleanup on failure.
+const storeUploads = async (files) => {
+  const keys = [];
+  try {
+    for (const file of files || []) {
+      file.storageKey = storage.newKey('order-formats', file.fieldname || 'images', file.originalname);
+      await storage.put(file.storageKey, file.buffer, file.mimetype);
+      keys.push(file.storageKey);
     }
+  } catch (error) {
+    await cleanupFiles(keys);
+    throw error;
   }
+  return keys;
 };
 
 export const orderFormatService = {
@@ -68,6 +66,7 @@ export const orderFormatService = {
 
   create: async (data, files, userId) => {
     let connection;
+    const uploadedKeys = await storeUploads(files);
     try {
       connection = await pool.getConnection();
       await connection.beginTransaction();
@@ -94,17 +93,13 @@ export const orderFormatService = {
       await connection.commit();
 
       // Existing physical files are only ever removed after a successful commit.
-      cleanupFiles(filesToDeleteAfterCommit);
+      await cleanupFiles(filesToDeleteAfterCommit);
 
       return await orderFormatRepository.findByIdIncludingRequiredRelations(formatId);
     } catch (error) {
       if (connection) await connection.rollback();
-      // Filesystem cleanup for orphaned uploads on DB error
-      if (files && files.length > 0) {
-        files.forEach(f => {
-          if (fs.existsSync(f.path)) fs.unlinkSync(f.path);
-        });
-      }
+      // Remove this request's uploads on DB error
+      await cleanupFiles(uploadedKeys);
       throw error;
     } finally {
       if (connection) connection.release();
@@ -113,6 +108,7 @@ export const orderFormatService = {
 
   update: async (id, data, files, keepImages, userId) => {
     let connection;
+    const uploadedKeys = await storeUploads(files);
     try {
       connection = await pool.getConnection();
       await connection.beginTransaction();
@@ -143,17 +139,13 @@ export const orderFormatService = {
       await connection.commit();
 
       // Existing physical files are only ever removed after a successful commit.
-      cleanupFiles(filesToDeleteAfterCommit);
+      await cleanupFiles(filesToDeleteAfterCommit);
 
       return await orderFormatRepository.findByIdIncludingRequiredRelations(id);
     } catch (error) {
       if (connection) await connection.rollback();
-      // Filesystem cleanup for new uploads on DB error
-      if (files && files.length > 0) {
-        files.forEach(f => {
-          if (fs.existsSync(f.path)) fs.unlinkSync(f.path);
-        });
-      }
+      // Remove this request's uploads on DB error
+      await cleanupFiles(uploadedKeys);
       throw error;
     } finally {
       if (connection) connection.release();
@@ -282,12 +274,8 @@ export const orderFormatService = {
     const imagesToDelete = existingImages.filter(img => !keepIds.includes(img.id));
 
     for (const img of imagesToDelete) {
-      // Find full physical path
-      // Because we store relatively or just filename, assuming path is just the filename for simplicity
-      // based on how multer configured it. Wait, multer gives full absolute path or relative depending on config.
-      // Laravel uses 'order-formats/filename'. Let's store just the filename relative to /storage/order-formats.
-      const filePath = path.join(STORAGE_DIR, path.basename(img.path));
-      filesToDeleteAfterCommit.push(filePath);
+      // img.path is the storage key, e.g. 'order-formats/images-….jpg'.
+      filesToDeleteAfterCommit.push(img.path);
     }
 
     await orderFormatRepository.deleteImageRows(connection, id, keepIds.length > 0 ? keepIds : [-1]);
@@ -295,10 +283,9 @@ export const orderFormatService = {
     let order = await orderFormatRepository.getMaxImageSortOrder(connection, id);
 
     for (const file of newFiles) {
-      // file.filename comes from multer
-      const relativePath = `order-formats/${file.filename}`;
+      // file.storageKey was assigned when the upload was stored (storeUploads).
       order++;
-      await orderFormatRepository.insertImage(connection, id, relativePath, file.originalname, order);
+      await orderFormatRepository.insertImage(connection, id, file.storageKey, file.originalname, order);
     }
   },
 
@@ -332,9 +319,7 @@ export const orderFormatService = {
       // Queue existing physical images for deletion, but do not remove them
       // from disk until the transaction has successfully committed.
       const images = await orderFormatRepository.getImages(connection, id);
-      const filesToDeleteAfterCommit = images.map(img =>
-        path.join(STORAGE_DIR, path.basename(img.path))
-      );
+      const filesToDeleteAfterCommit = images.map(img => img.path);
 
       await orderFormatRepository.deleteImageRows(connection, id);
       await orderFormatRepository.softDelete(connection, id);
@@ -342,7 +327,7 @@ export const orderFormatService = {
       await connection.commit();
 
       // Existing physical files are only ever removed after a successful commit.
-      cleanupFiles(filesToDeleteAfterCommit);
+      await cleanupFiles(filesToDeleteAfterCommit);
     } catch (error) {
       if (connection) await connection.rollback();
       throw error;

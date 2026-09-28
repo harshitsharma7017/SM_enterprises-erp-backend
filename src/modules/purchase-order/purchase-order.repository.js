@@ -1,5 +1,6 @@
 import { pool } from '../../config/database.js';
 import { companyScope } from '../../services/company-scope.service.js';
+import { brandSpecRepository } from '../brand/brand-spec.repository.js';
 import { RECEIVED_CONDITION } from '../inward-entry/inward-entry.repository.js';
 
 export const purchaseOrderRepository = {
@@ -160,7 +161,7 @@ export const purchaseOrderRepository = {
     if (po.origin !== 'order_confirmation') {
       const [trace] = await pool.query(`
         SELECT poi.id AS line_id, poi.material_requirement_id, mr.requirement_no, mr.status AS requirement_status,
-               mr.brand_projection_id, bp.projection_no, br.name AS brand_name,
+               mr.brand_projection_id, bp.projection_no, bp.brand_id, br.name AS brand_name,
                mpi.material_plan_id, mp.plan_no, p.name AS product_name, p.item_group_code,
                u.code AS uom_code, u.decimal_places AS uom_decimal_places
         FROM purchase_order_items poi
@@ -185,6 +186,14 @@ export const purchaseOrderRepository = {
     `, [id]);
     
     po.timeline = timeline;
+
+    // Brand-wise spec of each line: the order's brand, or the brand of the projection the requirement came from.
+    let ocBrandId = null;
+    if (po.order_confirmation_id) {
+      const [[oc]] = await pool.query('SELECT brand_id FROM order_confirmations WHERE id = ?', [po.order_confirmation_id]);
+      ocBrandId = oc?.brand_id || null;
+    }
+    po.items = await brandSpecRepository.attach(po.items, (item) => ocBrandId || item.trace?.brand_id || null);
 
     return po;
   },
