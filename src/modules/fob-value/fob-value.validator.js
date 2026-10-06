@@ -33,6 +33,9 @@ const validateCommon = async (req, isUpdate = false) => {
   return errors;
 };
 
+/** The create rules for a body that did not arrive over HTTP (Excel import). */
+export const validateFobValueCreate = (body) => validateCommon({ body, params: {} }, false);
+
 export const fobValueValidator = {
   validateStore: async (req, res, next) => {
     try {

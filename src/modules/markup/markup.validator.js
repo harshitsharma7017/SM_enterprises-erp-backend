@@ -61,6 +61,9 @@ const validateCommon = async (req, isUpdate = false) => {
   return errors;
 };
 
+/** The create rules for a body that did not arrive over HTTP (Excel import). */
+export const validateMarkupCreate = (body) => validateCommon({ body, params: {} }, false);
+
 export const markupValidator = {
   validateStore: async (req, res, next) => {
     try {

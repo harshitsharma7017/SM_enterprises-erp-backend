@@ -5,7 +5,7 @@ import { authenticate } from '../../middleware/auth.middleware.js';
 import { requirePermission } from '../../middleware/rbac.middleware.js';
 import { handleUploadErrors } from '../../middleware/upload.middleware.js';
 
-// Excel imports of brands, products and draft brand projections only. The file is kept in
+// Excel imports of masters, draft brand projections and opening stock. The file is kept in
 // memory for the request (never written to the public storage folder).
 const upload = multer({
   storage: multer.memoryStorage(),

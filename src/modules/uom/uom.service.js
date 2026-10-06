@@ -14,8 +14,10 @@ export const uomService = {
 
   findById: (id) => uomRepository.findById(id),
 
-  create: async (data, userId) => {
-    const id = await uomRepository.create({ ...toPayload(data), created_by: userId, updated_by: userId });
+  // `connection`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, userId, { connection = null } = {}) => {
+    const id = await uomRepository.create({ ...toPayload(data), created_by: userId, updated_by: userId }, connection || undefined);
+    if (connection) return id;
     return uomRepository.findById(id);
   },
 

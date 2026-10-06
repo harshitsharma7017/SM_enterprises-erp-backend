@@ -15,7 +15,8 @@ export const fobValueService = {
     return await fobValueRepository.findByIdIncludingRelations(id);
   },
 
-  create: async (data, userId) => {
+  // `connection`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, userId, { connection = null } = {}) => {
     const payload = {
       name: data.name,
       status: data.status,
@@ -24,7 +25,8 @@ export const fobValueService = {
       updated_by: userId
     };
 
-    const id = await fobValueRepository.create(payload);
+    const id = await fobValueRepository.create(payload, connection || undefined);
+    if (connection) return id;
 
     return await fobValueService.findById(id);
   },

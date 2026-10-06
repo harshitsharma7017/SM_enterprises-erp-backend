@@ -15,8 +15,10 @@ export const materialTypeService = {
 
   findById: (id) => materialTypeRepository.findById(id),
 
-  create: async (data, userId) => {
-    const id = await materialTypeRepository.create({ ...toPayload(data), created_by: userId, updated_by: userId });
+  // `connection`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, userId, { connection = null } = {}) => {
+    const id = await materialTypeRepository.create({ ...toPayload(data), created_by: userId, updated_by: userId }, connection || undefined);
+    if (connection) return id;
     return materialTypeRepository.findById(id);
   },
 

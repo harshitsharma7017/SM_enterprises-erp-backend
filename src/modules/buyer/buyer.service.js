@@ -73,11 +73,14 @@ export const buyerService = {
     comments: data.comments || null
   }),
 
-  create: async (data, userId) => {
-    let connection;
+  // `outer`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, userId, { connection: outer = null } = {}) => {
+    let connection = outer;
     try {
-      connection = await pool.getConnection();
-      await connection.beginTransaction();
+      if (!outer) {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+      }
 
       // display_code is server-assigned inside the same transaction as the
       // insert: next() holds a row lock on the counter until this commits,
@@ -97,14 +100,15 @@ export const buyerService = {
       await buyerService.syncCartonMarkings(connection, buyerId, data.carton_markings || []);
       await buyerService.syncContacts(connection, buyerId, data.contacts || []);
 
+      if (outer) return buyerId;
       await connection.commit();
 
       return await buyerService.findById(buyerId);
     } catch (error) {
-      if (connection) await connection.rollback();
+      if (connection && !outer) await connection.rollback();
       throw error;
     } finally {
-      if (connection) connection.release();
+      if (connection && !outer) connection.release();
     }
   },
 

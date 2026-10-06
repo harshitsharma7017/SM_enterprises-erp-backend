@@ -12,11 +12,14 @@ export const categoryService = {
     return await categoryRepository.findByIdIncludingRequiredRelations(id);
   },
 
-  create: async (data, userId) => {
-    let connection;
+  // `outer`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, userId, { connection: outer = null } = {}) => {
+    let connection = outer;
     try {
-      connection = await pool.getConnection();
-      await connection.beginTransaction();
+      if (!outer) {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+      }
 
       // Get the next code through the shared NumberSeriesService
       const code = await numberSeriesService.next(connection, 'category');
@@ -36,14 +39,15 @@ export const categoryService = {
       // Sync format_ids if provided
       await categoryRepository.syncFormats(connection, categoryId, data.format_ids || []);
 
+      if (outer) return categoryId;
       await connection.commit();
       
       return await categoryRepository.findByIdIncludingRequiredRelations(categoryId);
     } catch (error) {
-      if (connection) await connection.rollback();
+      if (connection && !outer) await connection.rollback();
       throw error;
     } finally {
-      if (connection) connection.release();
+      if (connection && !outer) connection.release();
     }
   },
 

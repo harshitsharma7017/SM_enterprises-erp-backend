@@ -172,8 +172,8 @@ export const markupRepository = {
     return rows;
   },
 
-  create: async (data) => {
-    const [result] = await pool.query(
+  create: async (data, db = pool) => {
+    const [result] = await db.query(
       `INSERT INTO markups
          (supplier_id, buyer_id, record_date, markup_percent, status, remarks, created_by, updated_by, created_at, updated_at)
        VALUES (?, ?, CURDATE(), ?, ?, ?, ?, ?, NOW(), NOW())`,

@@ -38,6 +38,9 @@ const validateCommon = async (req, isUpdate = false) => {
   return errors;
 };
 
+/** The create rules for a body that did not arrive over HTTP (Excel import). */
+export const validateMaterialTypeCreate = (body) => validateCommon({ body, params: {} }, false);
+
 const middleware = (isUpdate) => async (req, res, next) => {
   try {
     const errors = await validateCommon(req, isUpdate);

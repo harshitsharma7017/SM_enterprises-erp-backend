@@ -57,6 +57,9 @@ const validateCommon = async (req, res, isUpdate = false) => {
   return errors;
 };
 
+/** The create rules for a body that did not arrive over HTTP (Excel import). */
+export const validateCategoryCreate = (body) => validateCommon({ body, params: {} }, null, false);
+
 export const categoryValidator = {
   validateStoreCategory: async (req, res, next) => {
     try {

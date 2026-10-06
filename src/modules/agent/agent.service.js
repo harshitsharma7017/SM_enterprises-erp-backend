@@ -59,11 +59,14 @@ export const agentService = {
     comments: data.comments || null
   }),
 
-  create: async (data, userId) => {
-    let connection;
+  // `outer`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, userId, { connection: outer = null } = {}) => {
+    let connection = outer;
     try {
-      connection = await pool.getConnection();
-      await connection.beginTransaction();
+      if (!outer) {
+        connection = await pool.getConnection();
+        await connection.beginTransaction();
+      }
 
       const payload = {
         ...agentService.buildPayload(data),
@@ -76,14 +79,15 @@ export const agentService = {
       await agentService.syncCategories(connection, agentId, data.categories || []);
       await agentService.syncCommissions(connection, agentId, data.commissions || []);
 
+      if (outer) return agentId;
       await connection.commit();
 
       return await agentService.findById(agentId);
     } catch (error) {
-      if (connection) await connection.rollback();
+      if (connection && !outer) await connection.rollback();
       throw error;
     } finally {
-      if (connection) connection.release();
+      if (connection && !outer) connection.release();
     }
   },
 

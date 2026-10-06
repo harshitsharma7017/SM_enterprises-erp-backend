@@ -57,8 +57,8 @@ export const uomRepository = {
     return rows.length > 0;
   },
 
-  create: async (data) => {
-    const [result] = await pool.query(`
+  create: async (data, db = pool) => {
+    const [result] = await db.query(`
       INSERT INTO uoms (code, name, decimal_places, status, created_by, updated_by, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
     `, [data.code, data.name, data.decimal_places, data.status, data.created_by, data.updated_by]);

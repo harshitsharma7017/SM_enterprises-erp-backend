@@ -96,8 +96,8 @@ export const fobValueRepository = {
     return rows.length > 0;
   },
 
-  create: async (data) => {
-    const [result] = await pool.query(
+  create: async (data, db = pool) => {
+    const [result] = await db.query(
       `INSERT INTO fob_values (name, status, remarks, created_by, updated_by, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, NOW(), NOW())`,
       [data.name, data.status, data.remarks, data.created_by, data.updated_by]

@@ -9,7 +9,9 @@ const STOCK_SERIES = { module: 'stock', prefix: 'STK/' };
 
 const rejected = (message, errors) => ({ status: 422, message, errors });
 
-const inTransaction = async (work) => {
+/** Runs `work` in a new transaction, or in the caller's when `outer` is given (Excel import). */
+const inTransaction = async (work, outer = null) => {
+  if (outer) return work(outer);
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
@@ -231,7 +233,8 @@ export const inventoryService = {
   }),
 
   // ---------------- Locations ----------------
-  createLocation: async (data, userId) => inTransaction(async (connection) => {
+  // `connection`: a caller-owned transaction (Excel import).
+  createLocation: async (data, userId, { connection: outer = null } = {}) => inTransaction(async (connection) => {
     const companyId = await companyScope.assertActiveCompany(data.company_id, connection);
     const code = String(data.code).trim().toUpperCase();
     if (await inventoryRepository.findLocationByCode(connection, companyId, code)) {
@@ -240,7 +243,7 @@ export const inventoryService = {
     return inventoryRepository.insertLocation(connection, {
       company_id: companyId, code, name: String(data.name).trim(), status: data.status || 'active', remarks: text(data.remarks), user_id: userId,
     });
-  }),
+  }, outer),
 
   /** Code, name, status and remarks are editable; the company is fixed once created. */
   updateLocation: async (id, data, userId) => inTransaction(async (connection) => {

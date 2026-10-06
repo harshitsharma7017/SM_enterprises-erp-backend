@@ -96,7 +96,8 @@ export const markupService = {
     };
   },
 
-  create: async (data, userId) => {
+  // `connection`: a caller-owned transaction (Excel import) — then only the new id is returned.
+  create: async (data, userId, { connection = null } = {}) => {
     const payload = {
       supplier_id:    data.supplier_id,
       buyer_id:       data.buyer_id,
@@ -106,7 +107,8 @@ export const markupService = {
       created_by:     userId,
       updated_by:     userId,
     };
-    const id = await markupRepository.create(payload);
+    const id = await markupRepository.create(payload, connection || undefined);
+    if (connection) return id;
     const row = await markupRepository.findByIdWithRelations(id);
     return markupService.enrich(row);
   },

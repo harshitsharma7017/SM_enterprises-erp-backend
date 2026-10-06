@@ -2,7 +2,12 @@ import { IMPORTS, findImport } from './import-definitions.js';
 import { importService, MAX_IMPORT_ROWS } from './import.service.js';
 import { rbacService } from '../../services/rbac.service.js';
 
-const describe = (def) => ({ key: def.key, title: def.title, columns: def.columns, example: def.example, grouped: Boolean(def.grouped), max_rows: MAX_IMPORT_ROWS });
+// Fixed choices are listed; a database-backed list is only flagged (`lookup`), its values are in the template.
+const describe = (def) => ({
+  key: def.key, title: def.title, example: def.example, grouped: Boolean(def.grouped),
+  columns: def.columns.map(({ options, ...c }) => ({ ...c, ...(Array.isArray(options) ? { options } : options ? { lookup: true } : {}) })),
+  company_scoped: def.companyScoped !== false, max_rows: MAX_IMPORT_ROWS,
+});
 
 /** report.import (route) AND the entity's own create permission. */
 const authorised = async (req, res) => {
@@ -46,16 +51,18 @@ export const importController = {
     }
   },
 
-  // GET /api/imports/:entity/template
+  // GET /api/imports/:entity/template?company_id= (company only for per-company imports)
   template: async (req, res, next) => {
     try {
       const def = await authorised(req, res);
       if (!def) return;
+      // The drop-downs list this company's records, so a per-company template needs one.
+      const buffer = await importService.template(def, req.query.company_id);
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename="${def.key}-import-template.xlsx"`);
-      res.send(importService.template(def));
+      res.send(buffer);
     } catch (error) {
-      next(error);
+      fail(res, next, error);
     }
   },
 
@@ -72,15 +79,18 @@ export const importController = {
     }
   },
 
-  // POST /api/imports/:entity/confirm (multipart: the same file, company_id) — all rows or none
+  // POST /api/imports/:entity/confirm (multipart: the same file, company_id, skip_rows = "3,7,12")
+  // — every row not excluded, or none
   confirm: async (req, res, next) => {
     try {
       const def = await authorised(req, res);
       if (!def) return;
       const buffer = fileOf(req, res);
       if (!buffer) return;
-      const result = await importService.confirm(def, buffer, req.body?.company_id, req.user.id);
-      res.status(201).json({ success: true, message: `${result.created} ${def.title.toLowerCase()} imported.`, data: result });
+      const skipRows = String(req.body?.skip_rows || '').split(',').map((n) => Number(n.trim())).filter((n) => Number.isInteger(n) && n > 1);
+      const result = await importService.confirm(def, buffer, req.body?.company_id, req.user.id, { skipRows });
+      const skippedNote = result.skipped ? ` ${result.skipped} row(s) left out.` : '';
+      res.status(201).json({ success: true, message: `${result.created} ${def.title.toLowerCase()} imported.${skippedNote}`, data: result });
     } catch (error) {
       fail(res, next, error);
     }

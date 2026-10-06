@@ -108,7 +108,7 @@ const xmlEscape = (v) => String(v)
   .replace(/"/g, '&quot;')
   .replace(/'/g, '&apos;');
 
-const colName = (index) => {
+export const colName = (index) => {
   let n = index + 1;
   let name = '';
   while (n > 0) {
@@ -166,7 +166,13 @@ const typedCell = (ref, cell) => {
 
 const isTyped = (cell) => cell !== null && typeof cell === 'object' && 'type' in cell;
 
-const buildSheetXml = (rows) => {
+/**
+ * `widths`: column widths in characters (index = column).
+ * `validations`: drop-down lists, [{ sqref: 'B2:B1001', list: 'definedName', strict }] — strict
+ * rejects anything not in the list; otherwise the list is offered but any text is accepted
+ * (used for ";"-separated multi-value cells).
+ */
+const buildSheetXml = (rows, { widths = [], validations = [] } = {}) => {
   const rowsXml = rows.map((row, rIdx) => {
     const cellsXml = row.map((cell, cIdx) => {
       const ref = `${colName(cIdx)}${rIdx + 1}`;
@@ -180,9 +186,21 @@ const buildSheetXml = (rows) => {
     return `<row r="${rIdx + 1}">${cellsXml}</row>`;
   }).join('');
 
+  const colsXml = widths.length
+    ? `<cols>${widths.map((w, i) => `<col min="${i + 1}" max="${i + 1}" width="${w}" customWidth="1"/>`).join('')}</cols>`
+    : '';
+  const validationsXml = validations.length
+    ? `<dataValidations count="${validations.length}">${validations.map((v) => (
+      `<dataValidation type="list" allowBlank="1" showInputMessage="1" showErrorMessage="${v.strict ? 1 : 0}" ` +
+      `errorTitle="Not in the list" error="Pick a value from the drop-down list." sqref="${v.sqref}">` +
+      `<formula1>${xmlEscape(v.list)}</formula1></dataValidation>`
+    )).join('')}</dataValidations>`
+    : '';
+
+  // Element order is fixed by the schema: cols, sheetData, then dataValidations.
   return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
     `<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">` +
-    `<sheetData>${rowsXml}</sheetData></worksheet>`;
+    `${colsXml}<sheetData>${rowsXml}</sheetData>${validationsXml}</worksheet>`;
 };
 
 // Only written when a date cell needs it: yyyy-mm-dd and yyyy-mm-dd hh:mm:ss (unambiguous in every locale).
@@ -199,19 +217,26 @@ const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
   `</styleSheet>`;
 
 /**
- * @param {{ sheetName?: string, rows: Array<Array<string|number|null|{type: string, value: any}>> }} params
+ * @param {{ sheetName?: string, rows: Array<Array<string|number|null|{type: string, value: any}>>,
+ *   widths?: number[], validations?: Array<{ sqref: string, list: string, strict?: boolean }>,
+ *   extraSheets?: Array<{ name: string, rows: Array<Array<any>>, hidden?: boolean, widths?: number[] }>,
+ *   definedNames?: Array<{ name: string, ref: string }> }} params
  *   Plain strings / numbers are written as before; typed cells ({ type: 'number' | 'date' |
- *   'datetime' | 'text', value }) give exact decimals and real Excel dates.
+ *   'datetime' | 'text', value }) give exact decimals and real Excel dates. `extraSheets` follow
+ *   the main sheet, which stays first (readFirstSheet reads only that one). `definedNames` are
+ *   workbook-level named ranges, e.g. { name: 'opt_Status', ref: 'Lists!$A$2:$A$3' }, which a
+ *   validation's `list` can refer to.
  * @returns {Buffer}
  */
-export function writeSimpleXlsx({ sheetName = 'Sheet1', rows = [] }) {
-  const withStyles = rows.some((row) => row.some((cell) => isTyped(cell) && (cell.type === 'date' || cell.type === 'datetime')));
+export function writeSimpleXlsx({ sheetName = 'Sheet1', rows = [], widths = [], validations = [], extraSheets = [], definedNames = [] }) {
+  const sheets = [{ name: sheetName, rows, widths, validations }, ...extraSheets];
+  const withStyles = sheets.some((sheet) => sheet.rows.some((row) => row.some((cell) => isTyped(cell) && (cell.type === 'date' || cell.type === 'datetime'))));
   const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
     `<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">` +
     `<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>` +
     `<Default Extension="xml" ContentType="application/xml"/>` +
     `<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>` +
-    `<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>` +
+    sheets.map((_, i) => `<Override PartName="/xl/worksheets/sheet${i + 1}.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>`).join('') +
     (withStyles ? `<Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>` : '') +
     `</Types>`;
 
@@ -222,22 +247,23 @@ export function writeSimpleXlsx({ sheetName = 'Sheet1', rows = [] }) {
 
   const workbook = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
     `<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">` +
-    `<sheets><sheet name="${xmlEscape(sheetName)}" sheetId="1" r:id="rId1"/></sheets></workbook>`;
+    `<sheets>${sheets.map((sheet, i) => `<sheet name="${xmlEscape(sheet.name)}" sheetId="${i + 1}"${sheet.hidden ? ' state="hidden"' : ''} r:id="rId${i + 1}"/>`).join('')}</sheets>` +
+    (definedNames.length ? `<definedNames>${definedNames.map((d) => `<definedName name="${xmlEscape(d.name)}">${xmlEscape(d.ref)}</definedName>`).join('')}</definedNames>` : '') +
+    `</workbook>`;
 
+  // Worksheets take rId1..rIdN, so the styles part follows them.
   const workbookRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n` +
     `<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">` +
-    `<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>` +
-    (withStyles ? `<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` : '') +
+    sheets.map((_, i) => `<Relationship Id="rId${i + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet${i + 1}.xml"/>`).join('') +
+    (withStyles ? `<Relationship Id="rId${sheets.length + 1}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>` : '') +
     `</Relationships>`;
-
-  const sheet1 = buildSheetXml(rows);
 
   const files = [
     { name: '[Content_Types].xml', data: Buffer.from(contentTypes, 'utf8') },
     { name: '_rels/.rels', data: Buffer.from(rootRels, 'utf8') },
     { name: 'xl/workbook.xml', data: Buffer.from(workbook, 'utf8') },
     { name: 'xl/_rels/workbook.xml.rels', data: Buffer.from(workbookRels, 'utf8') },
-    { name: 'xl/worksheets/sheet1.xml', data: Buffer.from(sheet1, 'utf8') },
+    ...sheets.map((sheet, i) => ({ name: `xl/worksheets/sheet${i + 1}.xml`, data: Buffer.from(buildSheetXml(sheet.rows, sheet), 'utf8') })),
     ...(withStyles ? [{ name: 'xl/styles.xml', data: Buffer.from(STYLES_XML, 'utf8') }] : []),
   ];
 

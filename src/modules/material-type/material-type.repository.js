@@ -69,8 +69,8 @@ export const materialTypeRepository = {
     return rows.length > 0;
   },
 
-  create: async (data) => {
-    const [result] = await pool.query(`
+  create: async (data, db = pool) => {
+    const [result] = await db.query(`
       INSERT INTO material_types (company_id, code, name, status, created_by, updated_by, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())
     `, [data.company_id, data.code, data.name, data.status, data.created_by, data.updated_by]);

@@ -139,6 +139,12 @@ const validateCommon = async (req, isUpdate = false) => {
   return errors;
 };
 
+/**
+ * The create rules for a body that did not arrive over HTTP (Excel import).
+ * Like the middleware, it writes the normalised values back onto `body`.
+ */
+export const validateAgentCreate = (body) => validateCommon({ body, params: {} }, false);
+
 export const agentValidator = {
   validateStore: async (req, res, next) => {
     try {
