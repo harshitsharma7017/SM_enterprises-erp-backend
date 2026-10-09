@@ -1,10 +1,7 @@
 /**
- * Database backup: mysqldump → gzip → storage key "backups/<db>_<UTC stamp>.sql.gz".
- *
- *   STORAGE_DRIVER=s3     the backup goes to the private bucket (R2 / S3), off
- *                         this server. /storage never serves the backups/ folder.
- *   STORAGE_DRIVER=local  it is written to ../db-backups next to the project,
- *                         outside the publicly served public/storage folder.
+ * Database backup: mysqldump → gzip → bucket key "backups/<db>_<UTC stamp>.sql.gz".
+ * The backup goes to the private bucket (S3 / R2), off this server; /storage
+ * never serves the backups/ folder.
  *
  * Run on a schedule (e.g. cron: `0 2 * * * cd /app && npm run backup:db`).
  * Needs the mysqldump client on the PATH. Credentials come from .env and are
@@ -12,16 +9,10 @@
  * Retention is left to the bucket's lifecycle rule (e.g. expire backups/ after 90 days).
  */
 import { spawn } from 'child_process';
-import fs from 'fs';
-import path from 'path';
 import zlib from 'zlib';
 import { pipeline } from 'stream/promises';
-import { fileURLToPath } from 'url';
 import { config } from '../src/config/env.js';
 import { storage } from '../src/services/storage.service.js';
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const LOCAL_DIR = path.join(__dirname, '../../db-backups');
 
 /** Streams mysqldump through gzip into memory; rejects if mysqldump fails. */
 const dump = async () => {
@@ -49,16 +40,9 @@ async function run() {
   const buffer = await dump();
   if (buffer.length < 100) throw new Error('The dump is unexpectedly small; not saved.');
 
-  if (storage.driverName() === 's3') {
-    const key = `backups/${name}`;
-    await storage.put(key, buffer, 'application/gzip');
-    console.log(`✅ Backup uploaded to the bucket: ${key} (${(buffer.length / 1024).toFixed(1)} KB)`);
-  } else {
-    await fs.promises.mkdir(LOCAL_DIR, { recursive: true });
-    const file = path.join(LOCAL_DIR, name);
-    await fs.promises.writeFile(file, buffer);
-    console.log(`✅ Backup written: ${file} (${(buffer.length / 1024).toFixed(1)} KB)`);
-  }
+  const key = `backups/${name}`;
+  await storage.put(key, buffer, 'application/gzip');
+  console.log(`✅ Backup uploaded to the bucket: ${key} (${(buffer.length / 1024).toFixed(1)} KB)`);
 }
 
 run().then(() => process.exit(0)).catch((err) => {

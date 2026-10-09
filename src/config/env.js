@@ -20,10 +20,9 @@ export const config = {
   // having its Super Admin role stripped. Not "whoever holds the Super Admin
   // role" — one specific configured account.
   superAdminEmail: process.env.SUPER_ADMIN_EMAIL || 'test@test.com',
-  // Uploaded files: 'local' (public/storage on this server) or 's3' (any
-  // S3-compatible bucket — Cloudflare R2 or Amazon S3). See storage.service.js.
+  // Uploaded files, archived documents and backups live in an S3-compatible
+  // bucket (Amazon S3 or Cloudflare R2). See storage.service.js.
   storage: {
-    driver: (process.env.STORAGE_DRIVER || 'local').toLowerCase(),
     endpoint: process.env.S3_ENDPOINT || '',
     region: process.env.S3_REGION || 'auto',
     bucket: process.env.S3_BUCKET || '',

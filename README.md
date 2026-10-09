@@ -33,7 +33,6 @@ src/
   database/migrations/    # SQL migrations (run via scripts/migrate.js)
 scripts/                  # CLI scripts (migrate, seeds, DB backup, validate schema, generate module)
 docs/                      # ERP domain, schema, and RBAC documentation
-public/storage/             # Uploaded files when STORAGE_DRIVER=local (served at /storage)
 ```
 
 Each feature module under `src/modules/<name>` follows a consistent pattern: `*.routes.js`, `*.controller.js`, `*.service.js`, `*.repository.js`, and `*.validator.js`.
@@ -76,8 +75,7 @@ cp .env.example .env
 | `JWT_SECRET` | Secret used to sign JWTs | *(set a strong secret)* |
 | `JWT_EXPIRES_IN` | JWT token expiry | `24h` |
 | `SUPER_ADMIN_EMAIL` | The one account that cannot be deleted, deactivated or lose Super Admin | `admin@yourcompany.com` |
-| `STORAGE_DRIVER` | Where uploads are kept: `local` or `s3` (see [File storage](#file-storage)) | `local` |
-| `S3_ENDPOINT` | Bucket endpoint (only for `s3`) | `https://<account-id>.r2.cloudflarestorage.com` |
+| `S3_ENDPOINT` | Bucket endpoint, required (see [File storage](#file-storage)) | `https://<account-id>.r2.cloudflarestorage.com` |
 | `S3_REGION` | `auto` for Cloudflare R2, the AWS region for S3 | `auto` |
 | `S3_BUCKET` | Bucket name | `garment-erp-files` |
 | `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | Bucket API credentials | *(from R2 / IAM)* |
@@ -224,12 +222,13 @@ Printable PDFs are served at `GET <record>/:id/document` for proforma invoices, 
 
 Uploads (order-format images, company logo, export checklist files) are stored by key, e.g. `order-formats/images-….jpg`, and always opened at `/storage/<key>` on this server:
 
-- `STORAGE_DRIVER=local` (default): files live in `public/storage/` and are served directly.
-- `STORAGE_DRIVER=s3`: files live in a **private** S3-compatible bucket; `/storage/<key>` redirects to a signed link valid for `S3_URL_EXPIRES_SECONDS`.
+Files live in a **private** S3-compatible bucket; `/storage/<key>` redirects to a signed link valid for `S3_URL_EXPIRES_SECONDS`. The server refuses to start until `S3_ENDPOINT`, `S3_BUCKET`, `S3_ACCESS_KEY_ID` and `S3_SECRET_ACCESS_KEY` are set.
 
-Only the upload folders (`order-formats/`, `company-profile/`, `export-documents/`) are served; anything else in the bucket (such as `backups/`) is never reachable through `/storage`. Anyone who has a file's `/storage/...` link can open it, with either driver.
+Only the upload folders (`order-formats/`, `company-profile/`, `export-documents/`) are served; anything else in the bucket (such as `backups/`) is never reachable through `/storage`. Anyone who has a file's `/storage/...` link can open it.
 
-To use **Cloudflare R2**: create a bucket and an R2 API token (Object Read & Write) in the Cloudflare dashboard, set `STORAGE_DRIVER=s3`, `S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com`, `S3_REGION=auto`, the bucket name and keys, and restart. For **Amazon S3** use `S3_ENDPOINT=https://s3.<region>.amazonaws.com` and `S3_REGION=<region>`. When switching from local, first copy the contents of `public/storage/` into the bucket with the same paths.
+For **Amazon S3** create a private bucket and an IAM user with `s3:GetObject`, `s3:PutObject` and `s3:DeleteObject` on it, then set `S3_ENDPOINT=https://s3.<region>.amazonaws.com`, `S3_REGION=<region>`, the bucket name and keys. For **Cloudflare R2** create a bucket and an R2 API token (Object Read & Write), then set `S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com` and `S3_REGION=auto`.
+
+An installation that kept files in `public/storage/` on disk (older versions) must copy them into the bucket once: `npm run storage:upload-local`.
 
 ## Documents & letterhead
 
@@ -237,7 +236,7 @@ Every generated document (purchase order, GRN, QC report, return challan, debit 
 
 ## Document archive
 
-When a PO is confirmed, a GRN / supplier return / debit note posted, a QC inspection completed, a material issue posted, processing output posted, or a proforma invoice / invoice issued, its PDF is rendered once and kept under `documents/` in the file storage (local or bucket), listed in **Reports → Document Archive** and on each record as **Issued copy**. These files are never served by `/storage`; they download through the API with the `document.view` permission. On an existing installation, run `npm run backfill:documents` once after migrating to archive the documents that were already final.
+When a PO is confirmed, a GRN / supplier return / debit note posted, a QC inspection completed, a material issue posted, processing output posted, or a proforma invoice / invoice issued, its PDF is rendered once and kept under `documents/` in the bucket, listed in **Reports → Document Archive** and on each record as **Issued copy**. These files are never served by `/storage`; they download through the API with the `document.view` permission. On an existing installation, run `npm run backfill:documents` once after migrating to archive the documents that were already final.
 
 ## Backups
 
