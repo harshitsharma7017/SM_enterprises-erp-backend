@@ -125,24 +125,21 @@ npm run seed:lookups
 
 ### 8. Create the first admin user
 
-No script creates users. Create the first one directly, then manage the rest from **User Management → Users**. Generate a bcrypt hash for the password:
+You can automatically seed or create the Super Admin user with a single command:
 
 ```bash
-node -e "import('bcryptjs').then(b => console.log(b.default.hashSync('ChangeMe@123', 10)))"
+npm run seed:admin
 ```
 
-Then insert the user and give it the Super Admin role (use the same email as `SUPER_ADMIN_EMAIL`):
+This creates or updates the admin account using `SUPER_ADMIN_EMAIL` from your `.env` (default password: `Admin@123`) and assigns the `Super Admin` role.
 
-```sql
-INSERT INTO users (name, email, password, is_active, created_at, updated_at)
-VALUES ('Admin', 'admin@yourcompany.com', '<bcrypt hash from above>', 1, NOW(), NOW());
+To specify custom credentials via command-line arguments:
 
-INSERT INTO user_roles (user_id, role_id)
-SELECT u.id, r.id FROM users u JOIN roles r ON r.name = 'Super Admin'
-WHERE u.email = 'admin@yourcompany.com';
+```bash
+node scripts/create-admin.js "admin@yourcompany.com" "YourStrongPassword@123" "Admin Name"
 ```
 
-Sign in with that email and password, then change the password.
+Once logged in, manage additional users from **User Management → Users**.
 
 ### 9. Start the server
 
@@ -172,6 +169,7 @@ curl http://localhost:5000/api/health
 | `npm run dev` | Start the server with Nodemon for development |
 | `node scripts/migrate.js` | Run pending database migrations |
 | `npm run seed:rbac` | Seed RBAC roles/permissions from `rbac-seed.json` |
+| `npm run seed:admin` | Create or update the Super Admin user |
 | `npm run seed:number-series` | Create the category / buyer code counters (safe to re-run) |
 | `npm run seed:lookups` | Seed dropdown lookups from `lookup-seed.json` (insert-only, safe to re-run) |
 | `npm run backfill:documents` | One-off: archive a copy of documents finalised before the archive existed |
